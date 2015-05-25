@@ -1,0 +1,5 @@
+#!/bin/bash
+
+CMD=conky.py
+
+python $CMD "$1"

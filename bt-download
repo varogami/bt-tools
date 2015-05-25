@@ -1,0 +1,65 @@
+#!/bin/bash
+#bt-tools - tools to interact with some bittorrent sites by commandline
+#Copyright (C) 2015 varogami
+
+#This program is free software: you can redistribute it and/or modify
+#it under the terms of the GNU General Public License as published by
+#the Free Software Foundation, either version 3 of the License, or
+#(at your option) any later version.
+
+#This program is distributed in the hope that it will be useful,
+#but WITHOUT ANY WARRANTY; without even the implied warranty of
+#MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#GNU General Public License for more details.
+
+#You should have received a copy of the GNU General Public License
+#along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+. ./config.bash
+BIN="python $BASEDIR/search-cli.py"
+
+
+help(){
+    echo "HELP"
+    echo "bt-download SITECODE id01 id02 id03 id04 ...."
+    echo "    SITECODE is BTD, ICN, TNT or KCK"
+    echo "    id01 id02... are id of bt-search result"
+    echo "if you want download specific format (magnet, torrent) edit TYPE variable on script file"
+    echo "type are: mag|tor|torcache|zoink"
+    echo "mag=magnet"
+    echo "tor=torrent"
+    echo "torcache=get torrent by searching hashfile on torcache site"
+    echo "zoink=get torrent by searching hashfile on zoink site"
+}
+
+if [ ! -z "$1" ]
+then
+    case $1 in
+	BTD)
+	    for i in `echo $@ | sed 's/BTD //'`
+	    do
+		$BIN dw "BTD-$i"
+	    done
+	    ;;
+	ICN)
+	    for i in `echo $@ | sed 's/ICN //'`
+	    do
+		$BIN dw  "ICN-$i"
+	    done
+	    ;;
+	TNT)
+	    for i in `echo $@ | sed 's/TNT //'`
+	    do
+		$BIN dw "TNT-$i"
+	    done
+	    ;;
+	KCK)
+	    for i in `echo $@ | sed 's/KCK //'`
+	    do
+		$BIN dw  "KCK-$i"
+	    done
+	    ;;
+    esac
+else
+    help
+fi
