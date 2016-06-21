@@ -1,0 +1,41 @@
+{
+    basedir : "/SCRIPTS/PATH",
+    rssdir :  "rss/",
+    export_file : "tmp/database-pretty.xml",
+    logdir : "log/",
+    client : "qbittorrent-nox",
+    debug = false,
+    modules :
+    {
+	{
+	    name : "tnt",
+	    enable : true,
+	    username : "user",
+	    password : "password",
+	    conky_enable : true,
+	    conky_cats : ["anime", "film", "serie"],
+	    rss_in_enabled : false,
+	    rss_in_cats : ["anime", "film", "serie"],
+	    rss_out_enabled : false,
+	    rss_out_cats : ["anime", "film", "serie"]
+	},
+	{
+	    name : "icn",
+	    enable : true,
+	    conky_enable : true,
+	    conky_cats : ["anime", "film", "serie"],
+	    rss_in_enabled : true,
+	    rss_in_cats : ["anime", "film", "serie"],
+	    rss_out_enabled : true,
+	    rss_out_cats : ["anime", "film", "serie"]
+	}
+    },
+    conky :
+    {
+	chars : 90,
+	row : 6
+    },
+
+}
+
+
