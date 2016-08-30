@@ -1,3 +1,0 @@
-#!/bin/bash
-
-bt-daemon-core > /dev/null

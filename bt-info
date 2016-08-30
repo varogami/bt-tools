@@ -1,4 +1,6 @@
-#!/bin/bash
+#! /usr/bin/python
+# -*- coding=utf-8 -*-
+
 #bt-tools - tools to interact with some bittorrent sites by commandline
 #Copyright (C) 2015  varogami
 
@@ -15,34 +17,107 @@
 #You should have received a copy of the GNU General Public License
 #along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-. config.bash
-BIN="python $BASEDIR/search-cli.py"
+from modules import utils
+from lib import config
+from lib import xml
+from lib import common
+import sys, subprocess
 
 
-help(){
-    echo "HELP"
-    echo "bt-info SITECODE-ID"
-    echo " or"
-    echo "bt-info SITECODE-ID web"
-    echo
-    echo "SITECODE is BTD, ICN, TNT or KCK"
-    echo "ID are id of bt-search result"
-}
+class Func:
+    def __init__(self):
+        self.data = xml.Data()
+        self.engines = config.engines
 
-if [ ! -z "$1" ]
-then
-    if [ ! -z "$2" ]
-    then
-	if [ "$2"=="web" ]
-	then
-	    $BIN "web" "$1"
-	else
-	    help
-	fi
-    else
-	$BIN "get" "$1"
-    fi
-else
-    help
-fi
+    def webpage(self, id):
+        dwinfo = common.Func().get(id)
+        print
+        subprocess.call([config.browser, dwinfo["link"]])
 
+    def update(self, id):
+        self.data.load()
+        type = id.split("-")[0]
+        trueid = id.split("-")[1]
+        isValidType = False
+        
+        #find element's engine
+        for engine in self.engines.values():
+            if type == engine.shortname:
+                isValidType = True
+                #get element's data by database
+                datalist = self.data.getList(engine.name)
+                item = datalist.getItem(trueid)
+
+                if not item.isVoid():
+                    link = item.getKey("link").getTxt()
+                    details = engine.makeVoidItem()
+                    details.link = link
+                    engine.get_detail_data(details)
+
+                    self._update_item("date", item, details.date)
+                    self._update_item("size", item, details.size)
+                    self._update_item("magnet", item, details.magnet)
+                    self._update_item("torrent-link", item, details.torrent_link)
+                    self._update_item("hashvalue", item, details.hashvalue)
+                    self._update_item("name", item, details.name)
+                    self._update_item("leech", item, details.leech)
+                    self._update_item("seed", item, details.seed)
+                    self._update_item("completed", item, details.compl)
+
+                    self.data.write()
+                else:
+                    common.Func().print_error("not found id \"" + id + "\"")
+        if not isValidType:
+           common.Func().print_error("not valid website code \"" + type + "\"")
+
+    def _update_item(self, name_field, item, data):
+        if not data == None:
+            item_key = item.getKey(name_field)
+            if item_key.isVoid():
+                item.addKey(name_field, data)
+                self._print_update("add " + name_field + ": ", data)
+            else:
+                item.updateKey( name_field, data )
+                self._print_update("update " + name_field + ": ", data)
+
+    def _print_update(self, string1, string2):
+        print config.color_blu + string1 + config.color_base + string2 
+
+
+class CLI:
+    def __init__(self):
+        if len(sys.argv) == 1:
+            self.help()
+        elif len(sys.argv) == 2:
+            self.show_info(sys.argv[1])
+        elif len(sys.argv) == 3:
+            if sys.argv[2] == "web":
+                self.show_web_page(sys.argv[1])
+            elif sys.argv[2] == "update":
+                self.update(sys.argv[1])
+            else:
+                common.Func().print_error( sys.argv[2] + " is bad parameter" )
+        else:
+            common.Func().print_error("too much parameters")
+            self.help()        
+    def show_info(self,id):
+        common.Func().get(id)
+        
+    def show_web_page(self,id):
+        Func().webpage(id)
+
+    def update(self,id):
+        Func().update(id)
+        
+    def help(self):
+        print "use:"
+        print "bt-info SITECODE-ID"
+        print "bt-info SITECODE-ID web"
+        print "bt-info SITECODE-ID update"
+        print
+        print "SITECODE-ID are in bt-search result or bt-utils rssLs"
+
+                        
+if __name__ == "__main__":
+    do = CLI()
+    

@@ -1,6 +1,7 @@
-#!/bin/bash
+#! /usr/bin/python
+# -*- coding=utf-8 -*-
 #bt-tools - tools to interact with some bittorrent sites by commandline
-#Copyright (C) 2015 varogami
+#Copyright (C) 2015  varogami
 
 #This program is free software: you can redistribute it and/or modify
 #it under the terms of the GNU General Public License as published by
@@ -15,51 +16,46 @@
 #You should have received a copy of the GNU General Public License
 #along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-. ./config.bash
-BIN="python $BASEDIR/search-cli.py"
+from modules import utils
+from lib import config
+from lib import xml
+from lib import common
+import sys
+
+class Func:
+    def __init__(self):
+        self.engines = config.engines
+
+    def iterative_download(self, args):
+        #find element's engine
+        isValidType = False
+        for engine in self.engines.values():
+            if args[1] == engine.shortname:
+                isValidType = True
+                for id in args:
+                    if not id == args[0]:
+                        if not id == args[1]:
+                            common.Func().download(args[1] + "-" + id)
+                            print
+        if not isValidType:
+            print "not valid " + args[1] + "-" + id
 
 
-help(){
-    echo "HELP"
-    echo "bt-download SITECODE id01 id02 id03 id04 ...."
-    echo "    SITECODE is BTD, ICN, TNT or KCK"
-    echo "    id01 id02... are id of bt-search result"
-    echo "if you want download specific format (magnet, torrent) edit TYPE variable on script file"
-    echo "type are: mag|tor|torcache|zoink"
-    echo "mag=magnet"
-    echo "tor=torrent"
-    echo "torcache=get torrent by searching hashfile on torcache site"
-    echo "zoink=get torrent by searching hashfile on zoink site"
-}
 
-if [ ! -z "$1" ]
-then
-    case $1 in
-	BTD)
-	    for i in `echo $@ | sed 's/BTD //'`
-	    do
-		$BIN dw "BTD-$i"
-	    done
-	    ;;
-	ICN)
-	    for i in `echo $@ | sed 's/ICN //'`
-	    do
-		$BIN dw  "ICN-$i"
-	    done
-	    ;;
-	TNT)
-	    for i in `echo $@ | sed 's/TNT //'`
-	    do
-		$BIN dw "TNT-$i"
-	    done
-	    ;;
-	KCK)
-	    for i in `echo $@ | sed 's/KCK //'`
-	    do
-		$BIN dw  "KCK-$i"
-	    done
-	    ;;
-    esac
-else
-    help
-fi
+class CLI:
+    def __init__(self):
+        if len(sys.argv) == 1:
+            self.help()
+        elif len(sys.argv) == 2:
+            common.Func().print_error("bad parameters")
+        else:
+            Func().iterative_download(sys.argv)
+
+    def help(self):
+        print "use:"
+        print "bt-download SITECODE ID01 ID02 ID03 ...."
+        print "     ID01 ID02 ... are id of bt-search result"
+
+                        
+if __name__ == "__main__":
+    do = CLI()

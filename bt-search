@@ -1,6 +1,8 @@
-#!/bin/bash
+#! /usr/bin/python
+# -*- coding=utf-8 -*-
+
 #bt-tools - tools to interact with some bittorrent sites by commandline
-#Copyright (C) 2015  varogami
+#Copyright (C) 2015-2016 varogami <varogami@altervista.org>
 
 #This program is free software: you can redistribute it and/or modify
 #it under the terms of the GNU General Public License as published by
@@ -15,32 +17,125 @@
 #You should have received a copy of the GNU General Public License
 #along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-. ./config.bash
-CMD="python $BASEDIR/search-cli.py"
+import sys
+from lib import config
+from lib import utils
+from lib import common
 
-help(){
-    echo "HELP"
-    echo "bt-search \"words\""
-    echo " or "
-    echo "bt-search \"words\" category"
-    echo "bt-download"
-    echo "    to downloads results"
-    echo
-    echo "CATEGORY LIST"
-    echo "local search:"
-    echo "cache"
-    echo
-    $CMD lscat
-}
+class Func:
+    def __init__(self):
+        self.__conf = config.Config()
+        self.__color = self.__conf.getColors()
+        self.__json = self.__conf.getJson()
+        self.__db = self.__conf.getDb()
+        self.__debug = self.__conf.getDebug()
 
-case $1 in
-    '') help;;
-    --help) help;;
-    *)  
-	case $2 in
-	    cache) $CMD csearch "$1";;
-	    '') $CMD search "$1";;
-	    *)$CMD search "$1" "$2";;
-	esac
-	;;
-esac
+    def search(self, pattern, cat='all'):
+        if cat == "cache":
+            self.__search_in_db(pattern)
+        elif cat == "hash":
+            self.__search_hash_in_db(pattern)
+        else:
+            self.__search(pattern,cat)
+
+    def __print_item(self, id, name, type, l, s, c, size):
+        print self.__color.magenta + str(id) + " | " + type + \
+            self.__color.base + " " + name + \
+            self.__color.yellow  + "  " + "[l" + l + " s" + s + " c" + c + "] " + size
+            
+    def __print_footer(self, key, count, new):
+        print self.__color.blu + "end "+ key +" search - " + str(count) + new + " item " +  self.__color.base
+        
+    def __search(self, pattern, cat):
+        #load all modules config
+        for key, value in self.__json['module'].iteritems() :
+            if value['enabled']:
+                #print module info
+                print self.__color.blu + key + " - " + value['url'] + self.__color.red
+                #check if exist catalog type on module
+                if cat in value['cats']:
+                    #load module
+                    engine = self.__conf.load_mod(key,value)
+                    if engine.search(pattern,cat):
+                        COUNT=len(engine.list)
+                        self.__db.resetCountNew()
+                        #print result count
+                        print self.__color.green + "[ result " + str(COUNT) + " item ]" + self.__color.base
+                        #insert items in db and print them 
+                        for i in engine.list:
+                            id = self.__db.insert(key, value['url'], i)
+                            self.__print_item(id, i.name, engine.getCategory(i.type), i.leech, i.seed, i.compl, i.get_human_size())
+                        self.__print_footer(key, self.__db.getCountNew()," new")
+                        print
+                    else:
+                        print self.__color.red + key + " search error: something not work" + self.__color.base 
+                else:
+                    print "\"" + cat + "\" category not in " + key    
+
+    def __getCategory(self, type, mod):
+        cats = self.__json['module'][mod]['cats']
+        for key, value in cats.iteritems():
+            if value == type:
+                return key
+            
+    def __search_in_db(self, pattern):
+        result = self.__db.search_by_name(pattern)
+        count=0
+        for row in result:
+            size = utils.sizeof(row[8])
+            cat = row[1] + " | " + self.__getCategory(row[7], row[1])
+            self.__print_item( str(row[0]), row[4], cat, str(row[10]), str(row[11]), str(row[12]), size)
+            count+=1
+        self.__print_footer("cache", count, "")
+        
+    def __search_hash_in_db(self, hash):
+        print self.__color.green + "SEARCH HASH: " + hash.upper() + self.__color.base
+        result = self.__db.search_by_hash(hash)
+        count=0
+        for row in result:
+            size = utils.sizeof(row[8])
+            cat = row[1] + " | " + self.__getCategory(row[7], row[1])
+            self.__print_item( str(row[0]), row[4], cat, str(row[10]), str(row[11]), str(row[12]), size)
+            count+=1
+        self.__print_footer("hash", count, "")
+
+    def getColors(self):
+        return self.__color
+
+    def getModules(self):
+        return self.__json['module']
+
+                    
+class CLI:
+    def __init__(self):
+        self.do = Func()
+        self.color = self.do.getColors()
+        self.common = common.Func(self.color, self.do.getModules())
+        if len(sys.argv) == 1:
+            self.help()
+        elif len(sys.argv) == 2:
+            self.do.search(sys.argv[1])
+        elif len(sys.argv) == 3:
+            self.do.search(sys.argv[1],sys.argv[2])
+        else:
+            self.common.print_error("too much parameter")
+
+    def help(self):
+        print "bt-search \"words\"                          - normal search"
+        print "bt-search \"words\" [cat]                    - normal search in specific category"
+        print "bt-search \"words\" cache                    - search in local db"
+        print "bt-search \"words\" hash                     - search hash value in file cache"
+        print
+        print "use to download search result:"
+        print "bt-download ID"
+        print "    example: bt-download 1234"
+        print
+        print "CATEGORY LIST and SUPPORTED MODULES"
+        print "cache: " + self.color.blu + "local search" + self.color.base
+        self.common.lscat()
+
+        
+        
+
+if __name__ == "__main__":
+    do = CLI()

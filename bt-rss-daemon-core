@@ -2,7 +2,7 @@
 # -*- coding=utf-8 -*-
 
 #bt-tools - tools to interact with some bittorrent sites by commandline
-#Copyright (C) 2015  varogami
+#Copyright (C) 2015 varogami <varogami@autistici.org>
 
 #This program is free software: you can redistribute it and/or modify
 #it under the terms of the GNU General Public License as published by
@@ -17,16 +17,14 @@
 #You should have received a copy of the GNU General Public License
 #along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import feed, config
+from lib import common
+from lib import config
 
 if __name__ == "__main__":
-    do = feed.Rss()
+    for modname,cats in config.rss_daemon_list.items():
+        if modname in config.mods_enabled:
+            for cat in cats:
+                common.Func().getRss(cat, modname)
+                if config.rss_daemon_gen_rss:
+                    common.Func().makeRss(cat, modname)
 
-    for siteid,cats in config.rss_daemon_get_list.items():
-        for cat in cats:
-                do.getData(cat, int(siteid))
-
-### if you want generate your own rss - not use if you use this with conky
-#    for siteid2,cats2 in config.rss_daemon_make_list.items():
-#        for cat2 in cats2:
-#                do.makeRss(cat2, int(siteid2))

@@ -1,6 +1,8 @@
-#!/bin/bash
+#! /usr/bin/python
+# -*- coding=utf-8 -*-
+
 #bt-tools - tools to interact with some bittorrent sites by commandline
-#Copyright (C) 2015  varogami
+#Copyright (C) 2015 varogami <varogami@autistici.org>
 
 #This program is free software: you can redistribute it and/or modify
 #it under the terms of the GNU General Public License as published by
@@ -15,20 +17,209 @@
 #You should have received a copy of the GNU General Public License
 #along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-. ./config.bash
-BIN="python $BASEDIR/search-cli.py"
+import sys
+from modules import utils
+from lib import xml
+from lib import config
+from lib import common
+from lib import rssfilter_qbt as qbt
 
+class Func:
+    def __init__(self):
+        self.data = xml.Data()
+        self.engines = config.engines
+        
+    def listdb(self):
+        self.data.load()
+        NUM_ITEMS=len(self.data.root)
+        print config.color_green + "[ numbers of website: " + str(NUM_ITEMS) + " ]"
+        
+        for i in self.data.root:
+            shortname = i.attrib['shortname'].encode('utf8')
+            name = i.attrib['name'].encode('utf8')
+            url = i.attrib['url'].encode('utf8')
+            
+            print config.color_blu + "[ " + name + " ]" + config.color_base
+            print config.color_blu + shortname + " - " + url + config.color_base
+            
+            COUNT=0
 
-help(){
-    echo "HELP"
-    echo "bt-debug listdb"
-    echo "bt-debug export"
-    echo "TODO"
-    echo "bt-debug merdedb"
-}
+            for z in i:
+                COUNT=COUNT+1
+                name = z.find("./key[@name]").text.encode('utf8')
+                id = z.attrib['id'].encode('utf8')
+                src = z.attrib['src'].encode('utf8')
+                type = z.attrib['type'].encode('utf8')
+                
+                print config.color_magenta + id  + config.color_yellow + " [" + src + "/"+  type + "] " + config.color_base +  name
+                
+            print config.color_green + "[ numbers of " + shortname +  " items: " + str(COUNT) + " ]" + config.color_base
+            print
 
-case $1 in
-    listdb) $BIN listdb;;
-    export) $BIN export;;
-    *)help ;;
-esac
+    def stats(self):
+        self.data.load()
+        NUM_ITEMS=len(self.data.root)
+        print config.color_green + "[ numbers of website: " + str(NUM_ITEMS) + " ]"
+
+        #TODO: count with xml functions
+        for i in self.data.root:
+            shortname = i.attrib['shortname'].encode('utf8')
+            name = i.attrib['name'].encode('utf8')
+            url = i.attrib['url'].encode('utf8')
+            
+            print config.color_magenta + "[ " + name + " ]" + config.color_base
+            print config.color_magenta + shortname + " - " + url + config.color_base
+            
+            COUNT=0
+            list_src = {}
+            list_type = {}
+
+            for z in i:
+                COUNT=COUNT+1
+                name = z.find("./key[@name]").text.encode('utf8')
+                src = z.attrib['src'].encode('utf8')
+                type = z.attrib['type'].encode('utf8')
+                
+                if src in list_src:
+                    SC = list_src[src]
+                    SC = SC + 1
+                    list_src[src] = SC
+                else:
+                    list_src[src] = 1
+
+                if type in list_type:
+                    TC = list_type[type]
+                    TC = TC + 1
+                    list_type[type] = TC
+                else:
+                    list_type[type] = 1
+
+                    
+            print config.color_yellow + "items: " + config.color_base + str(COUNT) 
+            print config.color_yellow + "source:" + config.color_base
+            for key, value in list_src.items():
+                print "  " + config.color_blu + str(key) + " " + config.color_base + str(value)
+            print config.color_yellow + "type:" + config.color_base
+            for key, value in list_type.items():
+                print "  " + config.color_blu + str(key) + " " + config.color_base + str(value)
+            print
+        
+    def lsmod(self):
+        print "HELP:"
+        print "pymod = python modules name to use in config.py with mods_enabled, rss_daemon_list and conky_list"
+        print "name  = website name"
+        print "sname = website shortname to use with bt-info and bt-download"
+        print
+
+        for modname, engine in self.engines.items():
+            keylist = []
+            for key in engine.cats.keys():
+                keylist.append(key)
+            keylist.sort()
+            keystring = ""
+            for key in keylist:
+                    keystring = keystring + " " + key
+                    
+            print "pymod:   " + config.color_blu + modname + config.color_base
+            print "name:    " + config.color_blu + engine.name + config.color_base
+            print "sname:   " + config.color_blu + engine.shortname + config.color_base
+            print "url:     " + config.color_blu + engine.url + config.color_base
+            print "cats:   " + config.color_blu +  keystring + config.color_base
+            print
+
+    def rssls(self, cat):
+        self.data.load()
+        for i in self.data.root:
+            shortname = i.attrib['shortname'].encode('utf8')
+            name = i.attrib['name'].encode('utf8')
+            url = i.attrib['url'].encode('utf8')
+            rsslist = i.xpath("./item[@src='rss'][@type='"+cat+"']")
+            
+            print config.color_blu + "[ " + name + " ]" + config.color_base
+            print config.color_blu + shortname + " - " + url + config.color_base
+            print config.color_green + "[ items in rss: " + str(len(rsslist)) + "; showed last: " + str(config.rssLimit) + " ] " + config.color_base
+            
+            if len(rsslist) > config.rssLimit:
+                limit = config.rssLimit
+            else:
+                limit = len(rsslist)-1
+
+            count=len(rsslist)-1
+            while count >= len(rsslist)-limit:
+                z = rsslist[count]
+                count = count -1
+
+                name = z.find("./key[@name]").text.encode('utf8')
+                
+                id = z.attrib['id'].encode('utf8')
+                type = z.attrib['type'].encode('utf8')
+                
+                print config.color_magenta + id  + config.color_yellow + " [" + type + "] " + config.color_base +  name
+            print
+    def write_qbt_filters(self):
+        do = qbt.Func(True)
+        do.write_rules()
+
+            
+class CLI:
+    def __init__(self):
+        if len(sys.argv) == 1:
+            self.help()
+        elif len(sys.argv) == 2:
+            if sys.argv[1] == "lsdb":
+                Func().listdb()
+            elif sys.argv[1] == "export":
+                print config.color_blu + "load:                    " + config.color_base +config.dbfile
+                Func().data.load()
+                print config.color_blu + "export in pretty xml to: " + config.color_base + config.export_file
+                Func().data.export()
+            elif sys.argv[1] == "write-qf":
+                Func().write_qbt_filters()
+            elif sys.argv[1] == "lsmod":
+                Func().lsmod()
+            elif sys.argv[1] == "help":
+                self.help()
+            elif sys.argv[1] == "mergedb":
+                pass
+            elif sys.argv[1] == "stats":
+                Func().stats()
+            elif sys.argv[1] == "lscat":
+                common.Func().lscat()
+            else:
+                common.Func().print_error("bad parameter: " + sys.argv[1])
+        elif len(sys.argv) == 3:
+            if sys.argv[1] == "rssLs":
+                Func().rssls(sys.argv[2])
+            else:
+                common.Func().print_error("bad parameters: " + sys.argv[1] + " " + sys.argv[2])
+        elif len(sys.argv) == 4:
+            if sys.argv[1] == "rssGet":
+                common.Func().getRss(sys.argv[2], sys.argv[3])
+            elif sys.argv[1] == "rssMake":
+                common.Func().makeRss(sys.argv[2], sys.argv[3])
+            else:
+                common.Func().print_error("bad parameters: " + sys.argv[1] + " " + sys.argv[2] + " " + sys.argv[3])
+        else:
+            common.Func().print_error("too mach parameter")
+            
+    def help(self):
+        print "bt-utils help                   - print this help"
+        print "bt-utils lsdb                   - list all cache entry - ( best use \"bt-utils lsdb | less -R\")"
+        print "bt-utils lsmod                  - list modules info"
+        print "bt-utils lscat                  - list categories info"
+        print "bt-utils rssGet CAT MODNAME     - get rss by category and engine"
+        print "bt-utils rssMake CAT MODNAME    - build rss by category and engine"
+        print "bt-utils rssLs CAT              - list last " + str(config.rssLimit) + " rss feed by category in cache"
+        print "bt-utils write-qf               - import qbittorrent filter to use with own generated rss"
+        print "bt-utils export                 - export to pretty xml format in: " + config.export_file
+        print "bt-utils stats"
+        
+        print
+        print "TODO"
+        print "bt-utils merdedb"
+        print "bt-utils webGet CAT MODNAME     - get last torrent on web by category and engine (if supported by module)"
+        print "bt-utils webLs  CAT SHORTNAME   - list torrent get by website by category and engine (if supported by module)"
+        print "bt-utils delitem SHORTNAME-ID   - delete specific item on database"
+
+if __name__ == "__main__":
+    do = CLI()

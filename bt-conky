@@ -1,5 +1,91 @@
-#!/bin/bash
+#! /usr/bin/python
+# -*- coding=utf-8 -*-
 
-CMD=conky.py
+#bt-tools - tools to interact with some bittorrent sites by commandline
+#Copyright (C) 2015 varogami <varogami@autistici.org>
 
-python $CMD "$1"
+#This program is free software: you can redistribute it and/or modify
+#it under the terms of the GNU General Public License as published by
+#the Free Software Foundation, either version 3 of the License, or
+#(at your option) any later version.
+
+#This program is distributed in the hope that it will be useful,
+#but WITHOUT ANY WARRANTY; without even the implied warranty of
+#MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#GNU General Public License for more details.
+
+#You should have received a copy of the GNU General Public License
+#along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+from modules import utils
+from lib import config
+from lib import xml
+from lib import common
+import sys, os
+
+
+class Conky:
+    def __init__(self):
+        self.data = xml.Data()
+        self.engines = config.engines
+        self.conkylist = config.conky_list
+        self.chars = config.conky_chars_to_print
+        self.row = config.conky_rows_to_print
+        self.filestate="/tmp/bt-conky.state"
+        
+    def Print(self):
+        self.data.load()
+        self._getLast()
+        self._setNow()
+
+        self.data.exportConky(self.engines[self.modname].name, self.cat, self.chars, self.row)
+
+    def _getLast(self):
+        if not os.path.isfile(self.filestate):
+            self._openfiles("w")
+            self._writefiles("0;0")
+            self.lastMod = 0 #self.conkylist.keys()[0]
+            self.lastCat = 0 # self.conkylist[self.lastMod][0]
+        else:
+            self._openfiles("r")
+            line = self.lastfile.readline()
+            self.lastMod = line.split(";")[0]
+            self.lastCat = line.split(";")[1]
+        self._closefiles()
+
+    def _setNow(self):
+        self.nowMod = int(self.lastMod)
+        self.nowCat = int(self.lastCat) + 1
+        modname = self.conkylist.keys()[self.nowMod]
+        
+        size_cats = len(self.conkylist[modname])
+        size_mods = len(self.conkylist.keys())
+        
+        if self.nowCat == size_cats:
+            self.nowCat = 0
+            self.nowMod = int(self.lastMod) + 1
+
+        if self.nowMod == size_mods:
+            self.nowMod = 0
+
+        self.modname = self.conkylist.keys()[self.nowMod]
+        self.cat = self.conkylist[self.modname][int(self.nowCat)]
+        
+        self._openfiles("w")
+        self._writefiles(str(self.nowMod) + ";" + str(self.nowCat))
+        self._closefiles()
+
+    def _openfiles(self, mode):
+        self.lastfile = open(self.filestate, mode)
+
+    def _writefiles(self, string):
+        self.lastfile.write(string)
+
+    def _closefiles(self):
+        self.lastfile.close()
+
+if __name__ == "__main__":
+    do = Conky()
+    do.Print()        
+        
+
