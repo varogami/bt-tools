@@ -91,6 +91,10 @@ class Data:
         self.rss = Rss().__dict__
         self.conky = Conky().__dict__
         self.module = Module(moddir).list
+        self.links = {}
+        self.links['torcache'] = "http://torcache.net/torrent/"
+        self.links['zoink'] = "https://zoink.it/torrent/"
+
         
 class Config:
     def __init__(self):
@@ -109,6 +113,10 @@ class Config:
             print "modules dir not exist - create: " + self.__dir_mod
             os.mkdir(self.__dir_mod)
 
+        if not os.path.exists(self.__dir_log):
+            print "log dir not exist  - create: " + self.__dir_log
+            os.mkdir(self.__dir_log)
+
         if not os.path.exists(self.__file_conf):
             print "config file not exist - build data "
             self.__data = Data(self.__dir_mod)
@@ -121,9 +129,7 @@ class Config:
         self.__debug = self.__json['debug']
         self.__db = sqlite.Data(self.__file_db, self.__debug)
         
-        if os.path.exists(self.__file_db):
-            self.__db.load()
-        else:
+        if not os.path.exists(self.__file_db):
             self.__db.makeDb()
             
     def __build_config(self):
@@ -145,7 +151,7 @@ class Config:
     def getDebug(self):
         return self.__debug
     
-    def load_mod(self, name, config):
+    def load_mod(self, name, config, log_dir, user_agent):
         #load modules config from "modules" dir
         filepath = os.path.dirname(os.path.realpath(__file__))
         moddir = os.path.dirname(filepath) + "/modules"
@@ -155,7 +161,7 @@ class Config:
         if os.path.isfile(os.path.join(moddir, name+'.py')) or \
           os.path.isfile(os.path.join(self.__dir_mod, name+'.py')):
             module = __import__(name)
-            return module.Data(name, config, self.__debug)
+            return module.Data(name, config, log_dir, user_agent, self.__debug)
         else:
             print self.__color.red + "module " + name + " not found" + self.__color.base
             return None

@@ -18,38 +18,42 @@
 
 from modules import utils
 from lib import config
-from lib import xml
+from lib import utils
 from lib import common
 import sys
 
 class Func:
     def __init__(self):
-        self.engines = config.engines
+        self.__conf = config.Config()
+        self.__color = self.__conf.getColors()
+        self.__json = self.__conf.getJson()
+        self.__db = self.__conf.getDb()
+        self.__debug = self.__conf.getDebug()
+        self.__common = common.Func(self.__color, self.getModules())
 
+    def getColors(self):
+        return self.__color
+
+    def getModules(self):
+        return self.__json['module']
+    
     def iterative_download(self, args):
-        #find element's engine
-        isValidType = False
-        for engine in self.engines.values():
-            if args[1] == engine.shortname:
-                isValidType = True
-                for id in args:
-                    if not id == args[0]:
-                        if not id == args[1]:
-                            common.Func().download(args[1] + "-" + id)
-                            print
-        if not isValidType:
-            print "not valid " + args[1] + "-" + id
-
-
+        for id in args:
+            if not id == args[0]:
+                self.common.download(id)
 
 class CLI:
     def __init__(self):
+        self.do = Func()
+        self.color = self.do.getColors()
+        self.common = common.Func(self.color, self.do.getModules())
+        
         if len(sys.argv) == 1:
             self.help()
         elif len(sys.argv) == 2:
-            common.Func().print_error("bad parameters")
+            self.common.print_error("bad parameters")
         else:
-            Func().iterative_download(sys.argv)
+            self.do.iterative_download(sys.argv)
 
     def help(self):
         print "use:"

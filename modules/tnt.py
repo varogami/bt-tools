@@ -1,9 +1,10 @@
 import urllib, httplib2, time
 from BeautifulSoup import BeautifulSoup
 from datetime import datetime
+from lib import module
 from lib import utils
 
-class Config:
+class Config(module.Config):
     def __init__(self):
         self.enabled = True
         self.url = 'http://forum.tntvillage.scambioetico.org'
@@ -47,28 +48,7 @@ class Config:
             "apps_mobile":"37"    
         }
 
-class Item:
-    def __init__(self):
-        self.name = None
-        self.date = None #date when bittorrent was load to website
-        self.link = None
-        self.size = None
-        self.id = None
-        self.seed = None
-        self.leech = None
-        self.compl = None
-        self.magnet = None
-        self.torrent_link = None
-        self.hashvalue = None
-        self.idate = int(time.time()) #datetime.utcnow().strftime("%a, %d %b %Y %H:%M:%S UTC")
-        self.type = None
-        self.object = None
-        self.html = None
-        self.files = None
-        self.torrent_link_alt1 = None
-        self.torrent_link_alt2 = None
-        self.descr = None
-
+class Item(module.Item):
     def _set_size(self,size):
         self.size = utils.getBytes(size+" GB")
         
@@ -97,18 +77,12 @@ class Item:
         else:
             return utils.sizeof(int(self.size))
     
-class Data:
-    def __init__(self, name, config, debug = False):
-        self.shortname = name
-        self.debug = debug
+class Data(module.Data):
+    def __init__(self, name, config, log_dir, user_agent, debug = False):
+        module.Data.__init__(self,name,config,log_dir,user_agent,debug)
         self.username = config['username']
         self.password = config['password']
-        self.list = []
-        self.url = config['url']
-        self.name = config['name']
         self.cookie = None
-        self.cats = config['cats'] 
-        self.cat = config['default_cat'] 
         self.rss_light_download = config['rss_light_download'] 
         self.num_rss_item = config['num_rss_item']
                                
@@ -136,37 +110,42 @@ class Data:
     def _logout(self):
         if self.debug:
             print "DEBUG: logout"
-        result=httplib2.Http()
-        uri=self.url + "/index.php?act=Login&CODE=03"
-        headers={'Cookie':self.cookie}
-        resp,content=result.request(uri, 'GET', None, headers)
+            
+        result = httplib2.Http()
+        uri = self.url + "/index.php?act=Login&CODE=03"
+        headers = {'Cookie':self.cookie}
+        resp,content = result.request(uri, 'GET', None, headers)
 
     def _run_search(self,pattern,cat,stp=0,stn=20,first_page=True):
-        result=httplib2.Http()
-        uri=self.url + "/index.php?act=allreleases"
-        headers={'Content-type':'application/x-www-form-urlencoded','Cookie':self.cookie}
-        data={'sb':'0', 'sd':'0', 'cat':str(cat), 'stn':str(stn), 'filter':pattern}
+        result = httplib2.Http()
+        uri = self.url + "/index.php?act=allreleases"
+        headers = {'Content-type':'application/x-www-form-urlencoded','Cookie':self.cookie}
+        data = {'sb':'0', 'sd':'0', 'cat':str(cat), 'stn':str(stn), 'filter':pattern}
 
         if first_page:
-            data['set']='Imposta filtro'
+            data['set'] = "Imposta filtro"
         else:
-            data['next']="Pagine successive >>"
-            data['stp']=str(stp)
+            data['next'] = "Pagine successive >>"
+            data['stp'] = str(stp)
+            
         data=urllib.urlencode(data)
         
         try:
             resp,content=result.request(uri, 'POST', data, headers, redirections=5, connection_type=None)
-
-            checkhtml = self._get_data(content, cat)
-            nextcheck = checkhtml.find('input',{'name':'next'})
             if self.debug:
-                print "DEBUG: run search and get html - first page " + str(first_page)
+                print "DEBUG: search - pattern \"" + pattern + "\" - cat " + cat + " - stp " + str(stp) + " - stn " + str(stn) + " - first page " + str(first_page)
+                now = datetime.now().strftime("%Y%m%d_%H%M%S")
+                self.logfile = self.log_dir+"/"+self.shortname+"-search-"+pattern+"-"+cat+"-"+str(stp)+"-"+str(stn)+"-"+str(first_page)+"-"+now+".html"
+            
+            parsed = self._get_data(content, cat)
+            have_next_page = parsed.find('input',{'name':'next'})
+
             try: 
-                if nextcheck.get('name')=='next':
-                    stn=checkhtml.find('input',{'name':'stn'})
+                if have_next_page.get('name')=='next':
+                    stn=parsed.find('input',{'name':'stn'})
                     stn=stn.get('value')
                     try:
-                        stp=checkhtml.find('input',{'name':'stp'})
+                        stp=parsed.find('input',{'name':'stp'})
                         stp=stp.get('value')
                     except:
                         stp=0
@@ -181,6 +160,16 @@ class Data:
 
     def _get_data(self, html, cat):
         parsedHtml = BeautifulSoup(html,convertEntities=BeautifulSoup.HTML_ENTITIES)
+        not_registered_string = "Spiacente ma devi essere registrato per visualizzare questa pagina"
+
+        if html.find(not_registered_string) > 0:
+            print self.shortname +" search error:  " + not_registered_string
+        
+        if self.debug:
+            logfile = open(self.logfile, "w")
+            logfile.write(parsedHtml.prettify())
+            logfile.close()
+            
         list = parsedHtml.findAll('tr',{'class':'row4'})
         for i in list:
             newitem = Item()
@@ -199,6 +188,7 @@ class Data:
             newitem.seed = stats[1].getText().replace("[", "").replace("]", "")
             newitem.compl = stats[2].getText().replace("[", "").replace("]", "")
             newitem._set_size(size)
+            
             if cat == '0':
                 img_cat = i.find('img')
                 cat = img_cat.get('src').split('/')[2].split('.')[0].replace("icon","")
@@ -244,9 +234,10 @@ class Data:
             item_obj.compl = details_table[4].getText().split(":")[1]
             date_last_seed = details_table[5].findAll("td")[1].getText() #maybe use in the future
             item_obj.hashvalue = details_table[6].getText().split(":")[1]
-            item_obj.torrent_link_alt1 = utils.get_url_by_hash(item_obj.hashvalue, utils.link_torcache )
-            item_obj.torrent_link_alt2 = utils.get_url_by_hash(item_obj.hashvalue, utils.link_zoink )
-
+            item_obj.add_torrent_link(utils.get_url_by_hash(item_obj.hashvalue, utils.link_torcache ))
+            item_obj.add_torrent_link(utils.get_url_by_hash(item_obj.hashvalue, utils.link_zoink ))
+            item.html = content
+            
             #TODO - description
             #item_obj.descr = parsedDetail.findAll("div")[8]
             #file = open("/home/andrea/text.html", "w")
@@ -293,11 +284,6 @@ class Data:
             else:
                 print self.shortname + " error:  none cookie - no login"
                 return False
-
-    def getCategory(self, type):
-        for key, value in self.cats.iteritems():
-            if value == type:
-                return key
 
     def getFeed(self, type):
         self.cat = type

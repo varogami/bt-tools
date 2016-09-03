@@ -7,10 +7,6 @@ class Data:
         self.__version = "0.0.1"
         self.__new_item = 0
             
-    def load(self):
-        if self.__debug:
-            print "DEBUG: load database"
-        #self.__con = sqlite3.connect(self.__file)
     def makeDb(self):
         print "create database"
         self.__create_tor_string= "CREATE TABLE torrent ( " + \
@@ -53,15 +49,21 @@ class Data:
     def insert(self, shortname, url_module, item):
         self.__con = sqlite3.connect(self.__file)
         with self.__con:
-            if self.__debug:
-                print "DEBUG: check if exist item " + item.id
             cur = self.__con.cursor()
             cur.execute('''SELECT id FROM torrent WHERE module=? AND id_module=?''', (shortname, item.id))
             result=cur.fetchone()
             if result is None:
-                if self.__debug:
-                    print "DEBUG: not found duplicate"
                 self.__new_item += 1
+                if item.data is not None:
+                    blob_object = sqlite3.Binary(item.data)
+                else:
+                    blob_object = None
+                    
+                if item.html is not None:
+                    html = sqlite3.Binary(item.html)
+                else:
+                    html = None
+                    
                 cur.execute('''INSERT INTO torrent VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)''', \
                             (None, \
                             shortname, \
@@ -79,14 +81,12 @@ class Data:
                             item.magnet, \
                             item.torrent_link, \
                             item.hashvalue, \
-                            item.object, \
-                            item.html))
+                            blob_object, \
+                            html))
                 lid = cur.lastrowid
                 return lid
             else:
-                id=result[0]
-                print "DEBUG: find duplicate " + str(id)  
-                return id
+                return result[0]
 
     def getCountNew(self):
         return self.__new_item
@@ -97,8 +97,6 @@ class Data:
     def search_by_name(self, pattern):
         self.__con = sqlite3.connect(self.__file)
         with self.__con:
-            if self.__debug:
-                print "DEBUG: find in db: " + pattern
             cur = self.__con.cursor()
             words=pattern.split(" ")
             count=0
@@ -109,9 +107,6 @@ class Data:
                 else:
                   sql = sql + " AND name LIKE '%"+word+"%'"
                 count+=1
-
-            if self.__debug:
-                print "DEBUG: sql: " + sql
                 
             cur.execute(sql)
             result=cur.fetchall()
