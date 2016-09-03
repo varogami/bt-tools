@@ -1,16 +1,14 @@
-#got by https://github.com/fm4d/KickassAPI
-
-import json, urllib, datetime, httplib2
+import urllib, httplib2, datetime
 from BeautifulSoup import BeautifulSoup
 from lib import module
-import KickassAPI
+from lib import utils
+
 
 class Config(module.Config):
     def __init__(self):
         self.enabled = True
         #self.url = 'https://kickasstop.com/'
         self.url = 'https://kat.am'
-        #self.url = 'http://katcr.to'
         self.name = 'kickasstorrents'
         self.rss_light_download = True
         self.pages = 4 #11 - limit pages
@@ -48,20 +46,15 @@ class Item(module.Item):
         newdate = datetime.datetime(int(year),int(month),int(day),int(hour),int(minutes),int(second))
         self.date = newdate.strftime("%a, %d %b %Y %H:%M:%S GMT")
 
-
-
         
 class Data(module.Data):
     def __init__(self, name, config, debug = False):
         module.Data.__init__(self,name,config,debug)        
         self.pages = config['pages']
         self.filter = config['rss_filter']
-        self.rss_light_download = config['rss_light_download']                
-        self.api = KickassAPI
+        self.rss_light_download = config['rss_light_download']
 
-    def search(self, what):
-        KickassAPI.Search
-    def search_bk(self, what, cat='all'):
+    def search(self, what, cat='all'):
         self.cat = cat
         ret = []
         i = 1

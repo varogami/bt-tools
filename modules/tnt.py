@@ -1,4 +1,4 @@
-import urllib, httplib2, time
+import urllib, httplib2
 from BeautifulSoup import BeautifulSoup
 from datetime import datetime
 from lib import module
