@@ -1,4 +1,4 @@
-import urllib, httplib2, datetime
+import urllib, httplib2, datetime, feedparser
 from BeautifulSoup import BeautifulSoup
 from lib import module
 from lib import utils
@@ -11,18 +11,17 @@ class Config(module.Config):
         self.url = 'https://kat.am'
         self.name = 'kickasstorrents'
         self.rss_light_download = True
-        self.pages = 4 #11 - limit pages
         self.cats = {
             'all': '',
-            'anime':'Anime',
+            'anime':'anime',
             'other':'Other',
-            'movie': 'Movies', 
-            'books': 'Books', 
-            'tv': 'TV', 
-            'music': 'Music',
-            'xxx': 'XXX',
-            'games': 'Games', 
-            'apps': 'Applications'}
+            'movie': 'movies', 
+            'books': 'books', 
+            'tv': 'tv', 
+            'music': 'music',
+            'xxx': 'xxx',
+            'games': 'games', 
+            'apps': 'applications'}
         self.default_cat = 'all'
         self.rss_filter = None #None - for not set filter - filter rss feed
 
@@ -48,71 +47,101 @@ class Item(module.Item):
 
         
 class Data(module.Data):
-    def __init__(self, name, config, debug = False):
-        module.Data.__init__(self,name,config,debug)        
-        self.pages = config['pages']
+    def __init__(self, name, config, logdir, user_agent, debug = False):
+        module.Data.__init__(self,name,config,logdir,user_agent,debug)        
         self.filter = config['rss_filter']
         self.rss_light_download = config['rss_light_download']
 
-    def search(self, what, cat='all'):
-        self.cat = cat
-        ret = []
-        i = 1
-        while True and i<self.pages:
-            results = []
-            pattern = urllib.urlencode(dict(q = what))
-            #try:
-            test = True
-            if test:
-                u = urllib.urlopen( self.url + '/json.php?%s&page=%d' %(pattern ,i) ) #was urllib2
-                if self.debug:
-                    print self.url + '/json.php?%s&page=%d' %(pattern ,i)
-                json_data = u.read()
-                try:
-                    json_dict = json.loads(json_data)
-                except:
-                    i += 1
-                    continue
+    def search(self, what, cat='all', page=1):
+        result=httplib2.Http(disable_ssl_certificate_validation=True)
+        
+        if cat == "all":
+            data=urllib.quote(what) 
+        else:
+            data=urllib.quote(what + " ") + "category:" + self.getCategory(cat)
+            
+        uri=self.url + "/usearch/" + data + "/"
 
-                if int(json_dict['total_results']) <= 0:
-                    return
-                results = json_dict['list']
+        if self.debug:
+            print "DEBUG: url "+uri
+            
+        resp,content=result.request(uri, 'GET')
+        
+        if self.debug:
+            print "DEBUG: search - pattern \"" + what + "\" - cat " + cat
+            now = datetime.now().strftime("%Y%m%d_%H%M%S")
+            self.logfile = self.log_dir+"/"+self.shortname+"-search-"+pattern+"-"+cat
+            logfile = open(self.logfile, "w")
+            logfile.write(content)
+            logfile.close()
+            
+        num_pages = self._get_data(content)
+        if page <= num_pages:
+            page += 1
+            search(what,cat,page)
+        
+    def _get_data(self,html):
+        parsedHtml = BeautifulSoup( html, convertEntities = BeautifulSoup.HTML_ENTITIES)
 
-                for r in results:
-                    try:
-                        if cat != 'all' and self.cats[cat] != r['category']:
-                            continue
+        try:
+            num_results = int(parsedHtml.find('h2').getText().split()[-1])
+            #int(pq("h2").text().split()[-1])
+            if num_results % 25:
+                num_pages = num_results / 25 + 1
+            num_pages = num_results / 25
+        except ValueError:
+            num_pages = 1
+            print "No results found!"
 
-                        newitem = Item()
-                        newitem.name = r['title']
-                        newitem.size = str(r['size'])
-                        newitem.seed = str(r['seeds'])
-                        newitem.leech = str(r['leechs'])
-                        newitem.link = r['torrentLink']
-                        newitem._set_obj(r['link'],"descr")
-                        newitem._set_date = r['pubDate']
-                        newitem._set_obj(r['files'],"files")
-                        newitem.hashvalue = r['hash'] 
-                        newitem.torrent_link = link
-                        newitem.hashvalue = hash
-                        newitem.magnet = utils.get_mag_by_hash(hash)                       
-                        newitem.add_torrent_link(utils.get_url_by_hash(hash, utils.link_torcache ))
-                        newitem.add_torrent_link(utils.get_url_by_hash(hash, utils.link_zoink ))
-                        self.list.append(newitem)
 
-                    except:
-                        pass
-                return True
-            #except urllib.HTTPError, e:
-             #   print self.shortname +" http error:  " + str(e.code)
-              #  return False
-            #except urllib.URLError, e:
-             #   print self.shortname +" url error:  " + str(e.args)
-              #  return False
-            i += 1
+        rows = parsedHtml.find('table',{'class':'data'})
+        rows = rows.findAll('tr')
+   
+        for i in rows:
+            newitem = Item()
+            td = i.find('td')
+            name = td.find('a',{'class':'cellMainLink'}).getText()
+            newitem.name = name.replace(" . ", ".").replace(" .", ".")
+            newitem.type = td.find('span').find("strong").find("a").getText().lower()
+
+            if td('a',{'class':'cellMainLink'}).get("href") is not None:
+                newitem.link = self.link + td('a',{'class':'cellMainLink'}).get("href")
+            newitem.magnet = td.find('a',{'data-nop':''}).get("href")
+            newitem.torrent_link = td.find('a',{'data-download'}).get("href")
+            td_centers = i.findAll('td',{'class':'center'})
+            newitem.size = td_centers[0].getText()
+            files = td_centers[1].getText()
+            age = td_centers[2].getText()
+            newitem.seed = td_centers[3].getText()
+            newitem.leech = td_centers[4].getText()
+            newitem._set_id(newitem.link)
+            print "DEBUG: name - id - magnet" + name + id + magnet
+            print files
+            print age
+                                              
+            self.list.append(newitem)
+
+        return 
+
+    def get_detail_data(self, item_obj):
+        try:
+            result=httplib2.Http()
+            resp,content=result.request(item_obj.link, 'GET')
+            parsedDetails = BeautifulSoup( content ,convertEntities = BeautifulSoup.HTML_ENTITIES )
+         
+            item_obj.magnet = parsedDetails.find('a',{'title':'Magnet link'}).get('href')
+            item_obj.leech = parsedDetails.find('div',{'class':'widgetLeech'}).find('strong').getText()
+            item_obj.seed = parsedDetails.find('div',{'class':'widgetSeed'}).find('strong').getText()
+            size = parsedDetails.find('div',{'class':'widgetSize'}).find('strong').getText()
+            cut=len(size)-2
+            size2 = size[:cut] + " " + size[cut:]
+            item_obj.size = utils.getBytes(size2)
+            item_obj.compl = parsedDetails.find('div',{'class':'font11px lightgrey line160perc'}).getText().split("Downloaded ")[1].split(" times.")[0].replace(",","")
+            #item_obj.descr = parsedDetails.find('div',{'class':'dataList'})
+        except Exception, e:
+            print self.shortname + " error:  " + str(e)
 
     def _get_rss(self, code):
-        import feedparser
         parsedRss = feedparser.parse(code)
     
         for i in parsedRss.entries:
@@ -146,25 +175,4 @@ class Data(module.Data):
         except Exception, e:
             print self.shortname + " error:  " + str(e)
 
-    def get_detail_data(self, item_obj):
-        try:
-            result=httplib2.Http()
-            resp,content=result.request(item_obj.link, 'GET')
-            parsedDetails = BeautifulSoup( content ,convertEntities = BeautifulSoup.HTML_ENTITIES )
-         
-            item_obj.magnet = parsedDetails.find('a',{'title':'Magnet link'}).get('href')
-            item_obj.leech = parsedDetails.find('div',{'class':'widgetLeech'}).find('strong').getText()
-            item_obj.seed = parsedDetails.find('div',{'class':'widgetSeed'}).find('strong').getText()
-            size = parsedDetails.find('div',{'class':'widgetSize'}).find('strong').getText()
-            cut=len(size)-2
-            size2 = size[:cut] + " " + size[cut:]
-            item_obj.size = utils.getBytes(size2)
-            item_obj.compl = parsedDetails.find('div',{'class':'font11px lightgrey line160perc'}).getText().split("Downloaded ")[1].split(" times.")[0].replace(",","")
-            #item_obj.descr = parsedDetails.find('div',{'class':'dataList'})
-        except Exception, e:
-            print self.shortname + " error:  " + str(e)
-
-    
-    def get_torrent_file(self, item):
-        utils.get_torrent_file(item, self.shortname, download_path)
     

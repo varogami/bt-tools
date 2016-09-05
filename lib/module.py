@@ -90,3 +90,6 @@ class Data(object):
 
     def getCount(self):
         return str(len(self.list))
+
+    def get_torrent_file(self, item):
+        utils.get_torrent_file(item, self.shortname)

@@ -18,7 +18,7 @@ link_torcache = "http://torcache.net/torrent/"
 link_zoink = "https://zoink.it/torrent/"
 db_date_format = ""
 
-import re, httplib2
+import re, httplib2, base64
 
 def _get_torrent(link, namefile, download_path):
     myfile = download_path+"/"+namefile+".torrent"
@@ -35,7 +35,7 @@ def _get_torrent(link, namefile, download_path):
             success = False
     return success
     
-def get_torrent_file(item, shortname, download_path):
+def get_torrent_file(item, shortname, download_path=None):
     if not item.torrent_link == None:
         link = item.torrent_link
     elif not item.torrent_link_alt1 == None:
@@ -109,7 +109,6 @@ def search_words_case_insens(seek, string):
 #needed to create TNT magnet
 def hashConvert(hashstring, type='32'):
     hash = hashstring.upper()
-    import base64
     data = base64.b16decode(hash)
     if type=='32':
         return base64.b32encode(data)

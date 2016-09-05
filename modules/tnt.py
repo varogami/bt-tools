@@ -1,4 +1,4 @@
-import urllib, httplib2
+import urllib, httplib2, feedparser
 from BeautifulSoup import BeautifulSoup
 from datetime import datetime
 from lib import module
@@ -192,18 +192,17 @@ class Data(module.Data):
             if cat == '0':
                 img_cat = i.find('img')
                 cat = img_cat.get('src').split('/')[2].split('.')[0].replace("icon","")
-                newitem.type = cat
-            else:
-                newitem.type = cat
+                
+            newitem.type = cat
             
             self.list.append(newitem)
         return parsedHtml
 
-    def get_detail_data(self, item_obj):
+    def get_detail_data(self, item):
         detail=httplib2.Http()
 
         try:
-            resp,content=detail.request(item_obj.link, 'GET')
+            resp,content=detail.request(item.link, 'GET')
             parsedDetail = BeautifulSoup(content,convertEntities=BeautifulSoup.HTML_ENTITIES)
             
             #check if link work without login
@@ -211,45 +210,55 @@ class Data(module.Data):
             if torrent_link is None:
                 if self.cookie is None:
                     self._try_login()
-                    print "##### make login #####"
+                    if self.debug:
+                        print "DEBUG: make login because link need authentication"
                 headers={'Content-type':'application/x-www-form-urlencoded','Cookie':self.cookie}
-                resp,content=detail.request( item_obj.link, headers=headers )
+                resp,content=detail.request( item.link, headers=headers )
                 parsedDetail = BeautifulSoup( content, convertEntities=BeautifulSoup.HTML_ENTITIES )
                 torrent_link = parsedDetail.find('a', {'title':'Scarica allegato'})
 
+
+                
             #GET DATA
-            item_obj.torrent_link = torrent_link.get('href')
+            item.torrent_link = torrent_link.get('href')
             date = parsedDetail.find('span', {'class':'postdetails'}).getText().replace("Inviato il:","")
-            item_obj._set_date(date)
+            item._set_date(date)
             
             #Details table
             details_table_src = torrent_link.findParent().findParent().findParent()
             details_table = details_table_src.findAll('tr')
 
-            item_obj.magnet = details_table[0].findAll('a')[1].get('href')
+            item.magnet = details_table[0].findAll('a')[1].get('href')
             size = details_table[1].getText().split(":")[1] # kb - mb - gb....
-            item_obj.size = utils.getBytes(size)
-            item_obj.seed = details_table[2].getText().split(":")[1]
-            item_obj.leech = details_table[3].getText().split(":")[1]
-            item_obj.compl = details_table[4].getText().split(":")[1]
+            item.size = utils.getBytes(size)
+            item.seed = details_table[2].getText().split(":")[1]
+            item.leech = details_table[3].getText().split(":")[1]
+            item.compl = details_table[4].getText().split(":")[1]
             date_last_seed = details_table[5].findAll("td")[1].getText() #maybe use in the future
-            item_obj.hashvalue = details_table[6].getText().split(":")[1]
-            item_obj.add_torrent_link(utils.get_url_by_hash(item_obj.hashvalue, utils.link_torcache ))
-            item_obj.add_torrent_link(utils.get_url_by_hash(item_obj.hashvalue, utils.link_zoink ))
+            item.hashvalue = details_table[6].getText().split(":")[1]
+            item.add_torrent_link(utils.get_url_by_hash(item.hashvalue, utils.link_torcache ))
+            item.add_torrent_link(utils.get_url_by_hash(item.hashvalue, utils.link_zoink ))
             item.html = content
             
             #TODO - description
-            #item_obj.descr = parsedDetail.findAll("div")[8]
+            #item.descr = parsedDetail.findAll("div")[8]
             #file = open("/home/andrea/text.html", "w")
             #myhtml = parsedDetail.findAll("div")[8]
             #file.write(myhtml.prettify())
             #file.close()
-            
+
+            if self.debug:
+                print "DEBUG: detail data - id " + str(item.id)
+                now = datetime.now().strftime("%Y%m%d_%H%M%S")
+                self.logfile = self.log_dir+"/"+self.shortname+"-get_detail_data-"+str(item.id)+"-"+now+".html"
+                logfile = open(self.logfile, "w")
+                logfile.write(parsedHtml.prettify())
+                logfile.close()
+                
         except Exception, e:
             print self.shortname + " error:  " + str(e)
 
     def _get_rss(self, code):
-        import feedparser
         parsedRss = feedparser.parse(code)
     
         for i in parsedRss.entries:
@@ -295,6 +304,4 @@ class Data(module.Data):
         except Exception, e:
             print self.shortname + " error:  " + str(e)
             
-    def get_torrent_file(self, item):
-        utils.get_torrent_file(item, self.shortname,download_path)
 
