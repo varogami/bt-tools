@@ -39,6 +39,13 @@ class Item(object):
             self.data['torrent_links'] = []
         self.data['torrent_links'].append(url)
 
+    def add_generic_item(self, name, value):
+        if self.data is None:
+            self.data = {}
+            self.data[name] = []
+        self.data[name].append(value)
+
+
     def _set_data(self, name, descr):
         if self.data is None:
             self.data = {}
