@@ -108,11 +108,11 @@ class Config:
         if not os.path.exists(self.__dir):
             print "config dir not exist  - create: " + self.__dir
             os.mkdir(self.__dir)
-
+            
         if not os.path.exists(self.__dir_mod):
             print "modules dir not exist - create: " + self.__dir_mod
             os.mkdir(self.__dir_mod)
-
+            
         if not os.path.exists(self.__dir_log):
             print "log dir not exist  - create: " + self.__dir_log
             os.mkdir(self.__dir_log)
@@ -121,12 +121,14 @@ class Config:
             print "config file not exist - build data "
             self.__data = Data(self.__dir_mod)
             self.__build_config()
-
+        
+            
         print "load config           - " + self.__file_conf
         with open(self.__file_conf) as data_file:
             self.__json = json.load(data_file)
             
         self.__debug = self.__json['debug']
+        self.__load_new_mod()
         self.__db = sqlite.Data(self.__file_db, self.__debug)
         
         if not os.path.exists(self.__file_db):
@@ -165,6 +167,12 @@ class Config:
         else:
             print self.__color.red + "module " + name + " not found" + self.__color.base
             return None
+
+    def __load_new_mod(self):
+        #check for new mod
+        #if true load json - add new mod - save json
+        pass
+    
 
     def getDb(self):
         return self.__db
