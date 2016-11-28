@@ -84,7 +84,7 @@ class Data:
         self.dir_cache = None #TODO
         self.dir_download = None #TODO
         self.browser = "w3m" #"dwv" "qupzilla" "midori"
-        self.download_file_only = True #TODO
+        self.download_bt_file_only = True #TODO
         self.filter_download_file_only = True
         self.output_string_limit = 80 #used by bt-download
         self.date_format = "" #TODO
@@ -122,13 +122,12 @@ class Config:
             self.__data = Data(self.__dir_mod)
             self.__build_config()
         
-            
+        self.__load_new_mod_conf()
         print "load config           - " + self.__file_conf
         with open(self.__file_conf) as data_file:
-            self.__json = json.load(data_file)
-            
+            self.__json = json.load(data_file)            
         self.__debug = self.__json['debug']
-        self.__load_new_mod()
+
         self.__db = sqlite.Data(self.__file_db, self.__debug)
         
         if not os.path.exists(self.__file_db):
@@ -168,7 +167,7 @@ class Config:
             print self.__color.red + "module " + name + " not found" + self.__color.base
             return None
 
-    def __load_new_mod(self):
+    def __load_new_mod_conf(self):
         #check for new mod
         #if true load json - add new mod - save json
         pass

@@ -49,8 +49,6 @@ class Item(module.Item):
             Hour,Min,Sec = string.split("  - ")[1].split(':')
             cdate = datetime(int("20"+year),int(month),int(day),int(Hour),int(Min),int(Sec))
         self.date = cdate.strftime("%a, %d %b %Y %H:%M:%S CET")
-        
-
     
 
 class Data(module.Data):
@@ -72,6 +70,8 @@ class Data(module.Data):
         resp,content=result.request(uri, 'GET')
         #self._get_data(content.decode("utf-8"))
         self._get_data(content)
+        ## TO TEST
+        return True
 
     def _run_search_adv(self, pattern, cat):
         result=httplib2.Http()
@@ -97,6 +97,7 @@ class Data(module.Data):
                     resp,content=result.request(uri, 'GET')
                     #self._get_data(content.decode("utf-8"))
                     self._get_data(content)
+        return True
 
     def _get_data(self, html):
         parsedHtml = BeautifulSoup( html, convertEntities = BeautifulSoup.HTML_ENTITIES)
@@ -122,31 +123,38 @@ class Data(module.Data):
     def _extract_row_data(self, row_code):
         newitem = Item()
         newitem.name = row_code.find('a',{'class':'tab'}).getText()
-        link = row_code.find('a',{'class':'tab'}).get('href')
-        newitem.link = self.url + link
+        newitem.link = row_code.find('a',{'class':'tab'}).get('href')        
         newitem._set_id(newitem.link)
         size = row_code.find('font').getText()
         newitem._set_size(size)
         date = row_code.find('font',{'color':'#669999'}).getText()
         newitem._set_date(date)
 
-
-
- 
+        newitem.type =  row_code.find('a',{'class':'red'}).get('href').split('/')[4] 
         newitem.infohash = row_code.find('input',{'class':'downarrow'}).get('value')
-        tor_link_alt1 = utils.get_url_by_hash(infohash, utils.link_torcache )
-        tor_link_alt2 = utils.get_url_by_hash(infohash, utils.link_zoink )
-        newitem.add_torrent_link(tor
-        newitem.magnet = utils.get_mag_by_hash(infohash)
-        
+        tor_link_alt1 = utils.get_url_by_hash(newitem.infohash, utils.link_torcache )
+        tor_link_alt2 = utils.get_url_by_hash(newitem.infohash, utils.link_zoink )
+        #newitem.add_torrent_link(tor_link_alt1)
+        #newitem.add_torrent_link(tor_link_alt2)
+        newitem.magnet = utils.get_mag_by_hash(newitem.infohash)
+
         if row_code.find('font',{'color':'#00CC00'}):
             newitem.seed = row_code.find('font',{'color':'#00CC00'}).getText()
         else:
-            newitem.seed = "x"
+            newitem.seed = newitem.nodata
+            
         if row_code.find('font',{'color':'#0066CC'}):
             newitem.leech = row_code.find('font',{'color':'#0066CC'}).getText()
         else:
-            newitem.leech = "x"
+            newitem.leech = newitem.nodata
+
+        if row_code.find('font',{'color':'#EEEEEE'}):
+            newitem.compl = row_code.find('font',{'color':'#EEEEEE'}).getText().replace('x','')
+        else:
+            newitem.compl = newitem.nodata
+
+            
+
         self.list.append(newitem)
 
     def _get_rss(self,type):
@@ -174,60 +182,72 @@ class Data(module.Data):
             #if element found set variables
             if webitem.id == rssitem.id:
                 webitem.name = rssitem.name
-        
-    def get_detail_data(self, item_obj):
-        try:
-            result=httplib2.Http()
-            resp,content=result.request(item_obj.link, 'GET')
-            #parsedDetails = BeautifulSoup( content.decode("utf-8") ,convertEntities = BeautifulSoup.HTML_ENTITIES )
-            parsedDetails = BeautifulSoup( content ,convertEntities = BeautifulSoup.HTML_ENTITIES )
+                    
+    def __get_detail_data(self, item_obj):
+        result=httplib2.Http()
+        resp,content=result.request(item_obj.link, 'GET')
+        #parsedDetails = BeautifulSoup( content.decode("utf-8") ,convertEntities = BeautifulSoup.HTML_ENTITIES )
+        parsedDetails = BeautifulSoup( content ,convertEntities = BeautifulSoup.HTML_ENTITIES )
 
-            #get data
-            magnet_raw = parsedDetails.find('a',{'class':'forbtn','target':'_blank'})
-            if magnet_raw == None:
-                magnet_raw = parsedDetails.find('a',{'class':'forbtn magnet','target':'_blank'})
-            magnet = magnet_raw.get('href')
-            name_m = magnet.split("&tr=")[0].split("&dn=")[1]
-            name = urllib.unquote_plus(name_m)
+        #get data
+        magnet_raw = parsedDetails.find('a',{'class':'forbtn','target':'_blank'})
+        if magnet_raw == None:
+            magnet_raw = parsedDetails.find('a',{'class':'forbtn magnet','target':'_blank'})
+        magnet = magnet_raw.get('href')
+        name_m = magnet.split("&tr=")[0].split("&dn=")[1]
+        name = urllib.unquote_plus(name_m)
         
-            ## another way to get name 
-            #name = parsedDetails.find('title').getText().encode("iso-8859-1")
-            #string_to_del1="ilCorSaRoNeRo.info - "
-            #string_to_del2=" - torrent ita download"
-            #name = name.replace(string_to_del1, "")
-            #name = name.replace(string_to_del2, "")
+        ## another way to get name 
+        #name = parsedDetails.find('title').getText().encode("iso-8859-1")
+        #string_to_del1="ilCorSaRoNeRo.info - "
+        #string_to_del2=" - torrent ita download"
+        #name = name.replace(string_to_del1, "")
+        #name = name.replace(string_to_del2, "")
 
-            tdodd = parsedDetails.findAll('tr',{'class':'odd'})
-            tdodd2 = parsedDetails.findAll('tr',{'class':'odd2'})
+        tdodd = parsedDetails.findAll('tr',{'class':'odd'})
+        tdodd2 = parsedDetails.findAll('tr',{'class':'odd2'})
         
-            alltd = parsedDetails.findAll('td')
-            if alltd[9].getText() == "Descrizione":
-                description = alltd[10].getText()#.decode("iso-8859-1")
-                #.decode("utf-8")
-            else:
-                description = None
+        alltd = parsedDetails.findAll('td')
+        if alltd[9].getText() == "Descrizione":
+            description = alltd[10].getText()#.decode("iso-8859-1")
+            #.decode("utf-8")
+        else:
+            description = None
          
-            item_obj.magnet = magnet
-            item_obj.name = name
-            item_obj.leech = tdodd2[3].findAll('font')[1].getText()
-            item_obj.seed = tdodd2[3].findAll('font')[0].getText()
-            item_obj.compl = tdodd2[4].findAll('td')[1].getText().replace("x","")
-            item_obj.date = item_obj._convert_date(tdodd[1].findAll('td')[1].getText())
-            #item_obj.descr = description
-        except Exception, e:
-            print self.shortname + " error:  " + str(e)
-            
+        item_obj.magnet = magnet
+        item_obj.name = name
+        item_obj.leech = tdodd2[3].findAll('font')[1].getText()
+        item_obj.seed = tdodd2[3].findAll('font')[0].getText()
+        item_obj.compl = tdodd2[4].findAll('td')[1].getText().replace("x","")
+        item_obj.date = item_obj._convert_date(tdodd[1].findAll('td')[1].getText())
+        #item_obj.descr = description
+
+    def get_detail_data(self, item_obj):
+        if self.debug:
+            self.__get_detail_data(item_obj)
+        else:
+            try:
+                self.__get_detail_data(item_obj)
+            except Exception, e:
+                print self.shortname + " error:  " + str(e)
 
         
+    def __search(self, pattern, type):
+        if self.adv:
+            return self._run_search_adv(pattern, type)
+        else:
+            return self._run_search(pattern, type)
+
     def search(self, pattern, type):
         self.cat=type
-        try:
-            if self.adv:
-                self._run_search_adv(pattern, type)
-            else:
-                self._run_search(pattern, type)
-        except Exception, e:
-            print self.shortname + " error:  " + str(e)
+        if self.debug:
+            return self.__search(pattern, type)
+        else:
+            try:
+                return self.__search(pattern, type)
+            except Exception, e:
+                print self.shortname + " error:  " + str(e)
+                return False
             
     def getLastTypePage(self, type):
         '''build data object of single category (only 1 page)'''

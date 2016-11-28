@@ -32,7 +32,8 @@ class Item(object):
         self.type = None
         self.data = None 
         self.html = None
-
+        self.nodata = "x"
+        
     def add_torrent_link(self, url):
         if self.data is None:
             self.data = {}
