@@ -20,9 +20,10 @@
 import subprocess, time
 
 class Func:
-    def __init__(self, color, modules):
+    def __init__(self, color, modules, debug = False):
         self.color = color
         self.modules = modules
+        self.__debug = debug
                                    
     def print_error(self, string):
         print self.color.red + string + self.color.base
@@ -79,7 +80,7 @@ class Func:
         print self.client + " " + url[:config.output_string_limit] + "..." + config.color_base
         subprocess.call([self.client, url])
 
-    def get(self, id, verbose=True):
+    def get(self, id):
         self.data.load()
         website,trueid = id.split("-")
         isValidType = False
@@ -95,7 +96,7 @@ class Func:
                 downloaded_info= {}
 
                 if not item.isVoid():
-                    if verbose:
+                    if self.__debug:
                         #print first fields
                         print \
                             config.color_yellow + item.getAttr('id') + \

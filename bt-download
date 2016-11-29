@@ -29,7 +29,7 @@ class Func:
         self.__json = self.__conf.getJson()
         self.__db = self.__conf.getDb()
         self.__debug = self.__conf.getDebug()
-        self.__common = common.Func(self.__color, self.getModules())
+        self.__common = common.Func(self.__color, self.getModules(), self.__debug)
 
     def getColors(self):
         return self.__color
@@ -57,7 +57,7 @@ class CLI:
 
     def help(self):
         print "use:"
-        print "bt-download SITECODE ID01 ID02 ID03 ...."
+        print "bt-download ID01 ID02 ID03 ...."
         print "     ID01 ID02 ... are id of bt-search result"
 
                         

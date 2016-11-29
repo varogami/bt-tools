@@ -119,3 +119,9 @@ class Data:
             cur.execute('''SELECT * FROM torrent WHERE hash LIKE ?''', (hash,))
             result=cur.fetchall()
             return result
+
+    def get_item(self, id):
+        pass
+
+    def update_item(self, newitem):
+        pass
