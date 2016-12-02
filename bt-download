@@ -16,7 +16,6 @@
 #You should have received a copy of the GNU General Public License
 #along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from modules import utils
 from lib import config
 from lib import utils
 from lib import common
@@ -31,6 +30,8 @@ class Func:
         self.__debug = self.__conf.getDebug()
         self.__common = common.Func(self.__color, self.getModules(), self.__debug)
 
+    
+
     def getColors(self):
         return self.__color
 
@@ -40,8 +41,11 @@ class Func:
     def iterative_download(self, args):
         for id in args:
             if not id == args[0]:
-                self.common.download(id)
-
+                if self.__common.isMode(args[1]):
+                    if not id == args[1]:
+                        self.__common.download(id,args[1])
+                else:
+                    self.__common.download(id)
 class CLI:
     def __init__(self):
         self.do = Func()
@@ -50,15 +54,17 @@ class CLI:
         
         if len(sys.argv) == 1:
             self.help()
-        elif len(sys.argv) == 2:
-            self.common.print_error("bad parameters")
         else:
             self.do.iterative_download(sys.argv)
 
     def help(self):
         print "use:"
+        print "bt-download MODE ID01 ID02 ID03 ...."
+        print "     MODE               - is how download torrent"
+        print "     ID01 ID02 ... IDXX - are id of bt-search result"
+        print "or"
+        print
         print "bt-download ID01 ID02 ID03 ...."
-        print "     ID01 ID02 ... are id of bt-search result"
 
                         
 if __name__ == "__main__":

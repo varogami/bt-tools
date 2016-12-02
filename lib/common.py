@@ -24,7 +24,18 @@ class Func:
         self.color = color
         self.modules = modules
         self.__debug = debug
-                                   
+
+    def isMode(self, value):
+        result = False
+        if value == "m1":
+            result = True
+        if value == "m2":
+            result = True
+        if value == "m3":
+            result = True
+        return result
+        
+                                           
     def print_error(self, string):
         print self.color.red + string + self.color.base
                            
@@ -80,7 +91,7 @@ class Func:
         print self.client + " " + url[:config.output_string_limit] + "..." + config.color_base
         subprocess.call([self.client, url])
 
-    def get(self, id):
+    def old_get(self, id):
         self.data.load()
         website,trueid = id.split("-")
         isValidType = False
@@ -223,7 +234,7 @@ class Func:
         if not isValidType:
            self.print_error("not valid website code \"" + website + "\"")
 
-    def download(self, id):
+    def old_download(self, id):
         #download, add items on database and generate link by hash if exist
         dwinfo = self.get(id, False)
 
@@ -245,3 +256,9 @@ class Func:
                             self._launch_client(url)
                             #bug qbittorrent
                             time.sleep(5)
+    def download(self, id, mode = None):
+        if mode is None:
+            print "get id:" + str(id)
+        else:
+            if mode == "m1":
+                print "get with m1 way id:" + str(id)
