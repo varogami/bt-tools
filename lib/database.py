@@ -13,7 +13,7 @@ class Data:
             "id INTEGER PRIMARY KEY AUTOINCREMENT," + \
             "module TEXT NOT NULL," + \
             "url_module TEXT NOT NULL," + \
-            "id_module TEXT NOT NULL," + \
+            "id_module INTEGER NOT NULL," + \
             "name TEXT NOT NULL," + \
             "url_item TEXT NOT NULL UNIQUE," + \
             "idate INTEGER NOT NULL," + \
@@ -121,7 +121,11 @@ class Data:
             return result
 
     def get_item(self, id):
-        pass
+        self.__con = sqlite3.connect(self.__file)
+        cur = self.__con.cursor()
+        cur.execute('''SELECT * FROM torrent WHERE id == ?''', (id,))
+        result=cur.fetchone()
+        return result
 
     def update_item(self, newitem):
         pass

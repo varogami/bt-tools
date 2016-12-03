@@ -18,6 +18,7 @@
 #along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import subprocess, time
+import utils
 
 class Func:
     def __init__(self, color, modules, debug = False):
@@ -25,7 +26,7 @@ class Func:
         self.modules = modules
         self.__debug = debug
 
-    def isMode(self, value):
+    def __isMode(self, value):
         result = False
         if value == "m1":
             result = True
@@ -34,7 +35,20 @@ class Func:
         if value == "m3":
             result = True
         return result
-        
+
+
+    def print_item(self, id, i, config, mod):
+        self.__print_item(id, i.name, self.getCategory(config, i.type, mod), i.leech, i.seed, i.compl, i.get_human_size())
+
+    def print_item_db(self, row, config):
+        size = utils.sizeof(row[8])
+        cat = row[1] + " | " + self.getCategory(config, row[7], row[1])
+        self.__print_item( str(row[0]), row[4], cat, str(row[10]), str(row[11]), str(row[12]), size )
+    
+    def __print_item(self, id_item, name, category, leech, seed, completed, size):
+        print self.color.magenta + str(id_item) + " | " + category + \
+            self.color.base + " " + name + \
+            self.color.yellow  + "  " + "[l" + leech + " s" + seed + " c" + completed + "] " + size + self.color.base
                                            
     def print_error(self, string):
         print self.color.red + string + self.color.base
@@ -65,7 +79,49 @@ class Func:
             COUNT = COUNT+1
         print
         print "total number of category:" + str(COUNT)
-    
+
+    def getCategory(self, config, category, mod):
+        cats = config['module'][mod]['cats']
+        for name, external_category in cats.iteritems():
+            if external_category == category:
+                return name
+        
+    def __launch_client(self, result, config):
+        print self.color.cyan + "launching:"
+        #url[:config["output_string_limit"]]
+        print config["torrent_client"] + " " + "test" + "..." + self.color.base
+        #subprocess.call([config["torrent_client"], "test"])
+        #fix a bug with qbittorrent
+        time.sleep(5)
+        print
+        
+    def __get_item(self, db, id):
+        try:
+            val = int(id)
+            result = db.get_item(id)
+            if result is None:
+                self.print_error("\"" + id + "\" not found")
+            return result
+        except ValueError:
+            self.print_error("\"" + id + "\" not is number")
+            return None
+
+        
+    def download(self, config, db, id, mode):
+        if self.__isMode(mode):
+            if id != mode:
+                if mode == "m1":
+                    result = self.__get_item(db, id)
+                    if result is not None:
+                        self.print_item_db(result, config)
+                        self.__launch_client(result, config)
+        else:
+            result = self.__get_item(db, id)                    
+            if result is not None:
+                self.print_item_db(result, config)
+                self.__launch_client(result, config)
+                
+                
     def getRss(self, cat, modname):
         engine = self.engines[modname]
         engine.getFeed(cat)
@@ -86,179 +142,4 @@ class Func:
     def makeRss(self, cat, modname):
         self.data.exportRssByXml(self.engines[modname], cat)
 
-    def _launch_client(self, url):
-        print config.color_cyan + "launching:"
-        print self.client + " " + url[:config.output_string_limit] + "..." + config.color_base
-        subprocess.call([self.client, url])
-
-    def old_get(self, id):
-        self.data.load()
-        website,trueid = id.split("-")
-        isValidType = False
-        
-        #find element's engine
-        for engine in self.engines.values():
-            if website == engine.shortname:
-                isValidType = True
-                #get element's data by database
-                datalist = self.data.getList(engine.name)
-                item = datalist.getItem(trueid)
-                voiditem = engine.makeVoidItem()
-                downloaded_info= {}
-
-                if not item.isVoid():
-                    if self.__debug:
-                        #print first fields
-                        print \
-                            config.color_yellow + item.getAttr('id') + \
-                            config.color_blu + "/" + \
-                            config.color_yellow + item.getAttr('src') + \
-                            config.color_blu + "/" + \
-                            config.color_yellow + item.getAttr('type') + \
-                            config.color_blu + "         inserted on db: " + \
-                            config.color_yellow + item.getAttr('date') + \
-                            config.color_base
-
-                    #get remaining data
-                    magnet = item.getKey("magnet")
-                    torrent = item.getKey("torrent-link")
-                    bt_link_alt1 = item.getKey("torrent-link-alt1")
-                    bt_link_alt2 = item.getKey("torrent-link-alt2")
-                    hash = item.getKey("hashvalue")
-                    
-                    #check if data have valid elements else get by internet
-                    if magnet.isVoid() and torrent.isVoid() and bt_link_alt1.isVoid() and bt_link_alt2.isVoid() and hash.isVoid():
-                        link = item.getKey("link").getTxt()
-                        voiditem.link = link
-                        engine.get_detail_data(voiditem)
-                        date = item.getKey("date")
-                        url_alt1 = None
-                        url_alt2 = None
-                        gen_magnet = None
-                        
-                        #set hash if have it by internet  - add on db
-                        if not voiditem.hashvalue == None:
-                            newhash = item.addKey("hashvalue",voiditem.hashvalue)
-                            downloaded_info["hashvalue"] = voiditem.hashvalue
-                            gen_magnet = utils.get_mag_by_hash(voiditem.hashvalue)
-                            url_alt1 = utils.get_url_by_hash(voiditem.hashvalue, utils.link_torcache)
-                            url_alt2 = utils.get_url_by_hash(voiditem.hashvalue, utils.link_zoink)
-                        else:
-                            downloaded_info["hashvalue"] = None
-
-                        #set magnet on db and output dict
-                        if not voiditem.magnet == None:
-                            downloaded_info["magnet"] = voiditem.magnet
-                        else:
-                            downloaded_info["magnet"] = gen_magnet
-              
-                        if not downloaded_info["magnet"] == None:
-                            newmagnet = item.addKey("magnet",downloaded_info["magnet"])
-
-                        #set torrent link on db and output dict
-                        if not voiditem.torrent_link == None:
-                            newtorrent = item.addKey("torrent-link",voiditem.torrent_link)
-                            downloaded_info["torrent-link"] = voiditem.torrent_link
-                        else:
-                            downloaded_info["torrent-link"] = None
  
-                        #set torcache and zoink link
-                        if not url_alt1 == None:
-                            newtorrent_alt1 = item.addKey("torrent-link-alt1",url_alt1)
-                            downloaded_info["torrent-link-alt1"] = url_alt1
-
-                        if not url_alt2 == None:
-                            newtorrent_alt2 = item.addKey("torrent-link-alt2",url_alt2)
-                            downloaded_info["torrent-link-alt2"] = url_alt2
-                            
-                        if date.isVoid():
-                            if not voiditem.date==None:
-                                newdate = item.addKey("date",voiditem.date)
-
-                        downloaded_info["link"] = link
-
-                        if verbose:
-                            #print remaining data
-                            for i in item.elem:
-                                if i.attrib['name'] == "size":
-                                    print config.color_blu + i.attrib['name'].encode('utf8') + ": " + config.color_base + utils.sizeof(int(i.text))
-                                else:
-                                    print config.color_blu + i.attrib['name'].encode('utf8') + ": " + config.color_base + i.text
-                        else:
-                            print item.getKey("name").getTxt()
-                            
-                        #write new data got by internet
-                        self.data.write()
-                    else:
-                        if verbose:
-                            #if item have magnet or torrent file get and print all
-                            for i in item.elem:
-                                if i.attrib['name'] == "size":
-                                    print config.color_blu + i.attrib['name'].encode('utf8') + ": " + config.color_base + utils.sizeof(int(i.text))
-                                else:
-                                    print config.color_blu + i.attrib['name'].encode('utf8') + ": " + config.color_base + i.text
-                        else:
-                            print item.getKey("name").getTxt()
-                            
-                        link = item.getKey("link")
-
-                        if not magnet.key == None:
-                            downloaded_info["magnet"] = magnet.getTxt()
-                        else:
-                            downloaded_info["magnet"] = None
-
-                        if not torrent.key == None:
-                            downloaded_info["torrent-link"] = torrent.getTxt()
-                        else:
-                            downloaded_info["torrent-link"] = None
-
-                        if not hash.key == None:
-                            downloaded_info["hashvalue"] = hash.getTxt()
-                        else:
-                            downloaded_info["hashvalue"] = None
-        
-                        if not bt_link_alt1.key == None:
-                            downloaded_info["torrent-link-alt1"] = bt_link_alt1.getTxt()
-                        else:
-                            downloaded_info["torrent-link-alt1"] = None
-
-                        if not bt_link_alt2.key == None:
-                            downloaded_info["torrent-link-alt2"] = bt_link_alt1.getTxt()
-                        else:
-                            downloaded_info["torrent-link-alt2"] = None
-                            
-                        downloaded_info["link"] = link.getTxt()
-                else:
-                    self.print_error("not found id \"" + id + "\"")
-                return downloaded_info
-        if not isValidType:
-           self.print_error("not valid website code \"" + website + "\"")
-
-    def old_download(self, id):
-        #download, add items on database and generate link by hash if exist
-        dwinfo = self.get(id, False)
-
-        #to get torrent-link first
-        if dwinfo["torrent-link"] == None:
-            self.print_warning("warning: no torrent link")
-        else:
-            self._launch_client(dwinfo["torrent-link"])
-            #fix a bug with qbittorrent - magnet substitute torrent info - if magnet not have info clean info on download
-            time.sleep(5)
-
-        for key, url in dwinfo.items():
-            if not key == "link":
-                if not key == "hashvalue":
-                    if not key == "torrent-link":
-                        if url == None:
-                            self.print_warning("warning: no " + key + " link")
-                        else:
-                            self._launch_client(url)
-                            #bug qbittorrent
-                            time.sleep(5)
-    def download(self, id, mode = None):
-        if mode is None:
-            print "get id:" + str(id)
-        else:
-            if mode == "m1":
-                print "get with m1 way id:" + str(id)

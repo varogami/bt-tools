@@ -14,7 +14,7 @@
 #You should have received a copy of the GNU General Public License
 #along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import json, os, sys, sqlite
+import json, os, sys, database
 
 
 class Color:
@@ -128,7 +128,7 @@ class Config:
             self.__json = json.load(data_file)            
         self.__debug = self.__json['debug']
 
-        self.__db = sqlite.Data(self.__file_db, self.__debug)
+        self.__db = database.Data(self.__file_db, self.__debug)
         
         if not os.path.exists(self.__file_db):
             self.__db.makeDb()

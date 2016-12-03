@@ -1,7 +1,7 @@
 #! /usr/bin/python
 # -*- coding=utf-8 -*-
 #bt-tools - tools to interact with some bittorrent sites by commandline
-#Copyright (C) 2015  varogami
+#Copyright (C) 2015-2016  varogami@altervista.org
 
 #This program is free software: you can redistribute it and/or modify
 #it under the terms of the GNU General Public License as published by
@@ -28,34 +28,18 @@ class Func:
         self.__json = self.__conf.getJson()
         self.__db = self.__conf.getDb()
         self.__debug = self.__conf.getDebug()
-        self.__common = common.Func(self.__color, self.getModules(), self.__debug)
-
-    
-
-    def getColors(self):
-        return self.__color
-
-    def getModules(self):
-        return self.__json['module']
+        self.common = common.Func(self.__color, self.getModules(), self.__debug)
     
     def iterative_download(self, args):
         for id in args:
             if not id == args[0]:
-                if self.__common.isMode(args[1]):
-                    if not id == args[1]:
-                        self.__common.download(id,args[1])
-                else:
-                    self.__common.download(id)
-class CLI:
-    def __init__(self):
-        self.do = Func()
-        self.color = self.do.getColors()
-        self.common = common.Func(self.color, self.do.getModules())
-        
+                self.common.download(self.__json, self.__db, id, args[1])
+
+    def cli(self):
         if len(sys.argv) == 1:
             self.help()
         else:
-            self.do.iterative_download(sys.argv)
+            self.iterative_download(sys.argv)
 
     def help(self):
         print "use:"
@@ -68,4 +52,5 @@ class CLI:
 
                         
 if __name__ == "__main__":
-    do = CLI()
+    do = Func()
+    do.cli()

@@ -86,12 +86,6 @@ class Data(object):
         """
         raise NotImplementedError("This method must be overwritten")
 
-    def getCategory(self, category):
-        """Get internal category."""
-        for name, external_category in self.cats.iteritems():
-            if external_category == category:
-                return name
-
     def getFeed(self, type):
         """Get Feed. Must be overwritten in subclass."""
         raise NotImplementedError("This method must be overwritten")

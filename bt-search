@@ -29,6 +29,7 @@ class Func:
         self.__json = self.__conf.getJson()
         self.__db = self.__conf.getDb()
         self.__debug = self.__conf.getDebug()
+        self.common = common.Func(self.__color, self.getModules())
         self.user_agent = self.__json['user_agent']
 
     def search(self, pattern, cat='all'):
@@ -59,7 +60,7 @@ class Func:
                         #insert items in db and print them 
                         for i in engine.list:
                             id = self.__db.insert(name, module_config['url'], i)
-                            self.__print_item(id, i.name, engine.getCategory(i.type), i.leech, i.seed, i.compl, i.get_human_size())
+                            self.common.print_item(id, i, self.__json, name)
                         self.__print_footer(name, self.__db.getCountNew()," new")
                         print
                     else:
@@ -71,9 +72,7 @@ class Func:
         result = self.__db.search_by_name(pattern)
         count=0
         for row in result:
-            size = utils.sizeof(row[8])
-            cat = row[1] + " | " + self.__getCategory(row[7], row[1])
-            self.__print_item( str(row[0]), row[4], cat, str(row[10]), str(row[11]), str(row[12]), size)
+            self.common.print_item_db(row, self.__json)
             count+=1
         self.__print_footer("cache", count, "")
         
@@ -82,9 +81,7 @@ class Func:
         result = self.__db.search_by_hash(hash)
         count=0
         for row in result:
-            size = utils.sizeof(row[8])
-            cat = row[1] + " | " + self.__getCategory(row[7], row[1])
-            self.__print_item( str(row[0]), row[4], cat, str(row[10]), str(row[11]), str(row[12]), size)
+            self.common.print_item_db(row, self.__json)
             count+=1
         self.__print_footer("hash", count, "")
 
@@ -93,20 +90,9 @@ class Func:
 
     def getModules(self):
         return self.__json['module']
-
-    def __print_item(self, id_item, name, category, leech, seed, completed, size):
-        print self.__color.magenta + str(id_item) + " | " + category + \
-            self.__color.base + " " + name + \
-            self.__color.yellow  + "  " + "[l" + leech + " s" + seed + " c" + completed + "] " + size + self.__color.base
             
     def __print_footer(self, name, count, new):
         print self.__color.blu + "end "+ name +" search - " + str(count) + new + " item " +  self.__color.base
-
-    def __getCategory(self, category, mod):
-        cats = self.__json['module'][mod]['cats']
-        for name, external_category in cats.iteritems():
-            if external_category == category:
-                return name
 
         
         
@@ -114,7 +100,6 @@ class CLI:
     def __init__(self):
         self.do = Func()
         self.color = self.do.getColors()
-        self.common = common.Func(self.color, self.do.getModules())
         
         if len(sys.argv) == 1:
             self.help()
@@ -123,7 +108,7 @@ class CLI:
         elif len(sys.argv) == 3:
             self.do.search(sys.argv[1],sys.argv[2])
         else:
-            self.common.print_error("too much parameter")
+            self.do.common.print_error("too much parameter")
 
     def help(self):
         print "bt-search \"words\"                          - normal search"
@@ -137,7 +122,7 @@ class CLI:
         print
         print "CATEGORY LIST and SUPPORTED MODULES"
         print "cache: " + self.color.blu + "local search" + self.color.base
-        self.common.lscat()
+        self.do.common.lscat()
 
         
         

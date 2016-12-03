@@ -131,12 +131,12 @@ class Data(module.Data):
         newitem._set_date(date)
 
         newitem.type =  row_code.find('a',{'class':'red'}).get('href').split('/')[4] 
-        newitem.infohash = row_code.find('input',{'class':'downarrow'}).get('value')
-        tor_link_alt1 = utils.get_url_by_hash(newitem.infohash, utils.link_torcache )
-        tor_link_alt2 = utils.get_url_by_hash(newitem.infohash, utils.link_zoink )
+        newitem.hashvalue = row_code.find('input',{'class':'downarrow'}).get('value')
+        #tor_link_alt1 = utils.get_url_by_hash(newitem.infohash, utils.link_torcache )
+        #tor_link_alt2 = utils.get_url_by_hash(newitem.infohash, utils.link_zoink )
         #newitem.add_torrent_link(tor_link_alt1)
         #newitem.add_torrent_link(tor_link_alt2)
-        newitem.magnet = utils.get_mag_by_hash(newitem.infohash)
+        #newitem.magnet = utils.get_mag_by_hash(newitem.infohash)
 
         if row_code.find('font',{'color':'#00CC00'}):
             newitem.seed = row_code.find('font',{'color':'#00CC00'}).getText()
