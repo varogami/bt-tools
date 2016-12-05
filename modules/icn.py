@@ -183,9 +183,10 @@ class Data(module.Data):
             if webitem.id == rssitem.id:
                 webitem.name = rssitem.name
                     
-    def __get_detail_data(self, item_obj):
+    def __get_detail_data(self, link):
         result=httplib2.Http()
-        resp,content=result.request(item_obj.link, 'GET')
+        item_obj = Item()
+        resp,content=result.request(link, 'GET')
         #parsedDetails = BeautifulSoup( content.decode("utf-8") ,convertEntities = BeautifulSoup.HTML_ENTITIES )
         parsedDetails = BeautifulSoup( content ,convertEntities = BeautifulSoup.HTML_ENTITIES )
 
@@ -219,8 +220,17 @@ class Data(module.Data):
         item_obj.leech = tdodd2[3].findAll('font')[1].getText()
         item_obj.seed = tdodd2[3].findAll('font')[0].getText()
         item_obj.compl = tdodd2[4].findAll('td')[1].getText().replace("x","")
-        item_obj.date = item_obj._convert_date(tdodd[1].findAll('td')[1].getText())
+        item_obj.date = item_obj._set_date(tdodd[1].findAll('td')[1].getText())
         #item_obj.descr = description
+
+        if self.debug:
+            print item_obj.magnet
+            print item_obj.name 
+            print item_obj.leech 
+            print item_obj.seed 
+            print item_obj.compl
+            print item_obj.date 
+ 
 
     def get_detail_data(self, item_obj):
         if self.debug:

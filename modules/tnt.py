@@ -198,11 +198,12 @@ class Data(module.Data):
             self.list.append(newitem)
         return parsedHtml
 
-    def get_detail_data(self, item):
+    def get_detail_data(self, link):
         detail=httplib2.Http()
-
+        item = Item()
+        
         try:
-            resp,content=detail.request(item.link, 'GET')
+            resp,content=detail.request(link, 'GET')
             parsedDetail = BeautifulSoup(content,convertEntities=BeautifulSoup.HTML_ENTITIES)
             
             #check if link work without login
@@ -213,7 +214,7 @@ class Data(module.Data):
                     if self.debug:
                         print "DEBUG: make login because link need authentication"
                 headers={'Content-type':'application/x-www-form-urlencoded','Cookie':self.cookie}
-                resp,content=detail.request( item.link, headers=headers )
+                resp,content=detail.request( link, headers=headers )
                 parsedDetail = BeautifulSoup( content, convertEntities=BeautifulSoup.HTML_ENTITIES )
                 torrent_link = parsedDetail.find('a', {'title':'Scarica allegato'})
 
@@ -236,9 +237,9 @@ class Data(module.Data):
             item.compl = details_table[4].getText().split(":")[1]
             date_last_seed = details_table[5].findAll("td")[1].getText() #maybe use in the future
             item.hashvalue = details_table[6].getText().split(":")[1]
-            item.add_torrent_link(utils.get_url_by_hash(item.hashvalue, utils.link_torcache ))
-            item.add_torrent_link(utils.get_url_by_hash(item.hashvalue, utils.link_zoink ))
-            item.html = content
+            #item.add_torrent_link(utils.get_url_by_hash(item.hashvalue, utils.link_torcache ))
+            #item.add_torrent_link(utils.get_url_by_hash(item.hashvalue, utils.link_zoink ))
+            #item.html = content
             
             #TODO - description
             #item.descr = parsedDetail.findAll("div")[8]
@@ -249,14 +250,19 @@ class Data(module.Data):
 
             if self.debug:
                 print "DEBUG: detail data - id " + str(item.id)
-                now = datetime.now().strftime("%Y%m%d_%H%M%S")
-                self.logfile = self.log_dir+"/"+self.shortname+"-get_detail_data-"+str(item.id)+"-"+now+".html"
-                logfile = open(self.logfile, "w")
-                logfile.write(parsedHtml.prettify())
-                logfile.close()
-                
+                print link
+                print item.hashvalue
+                print item.torrent_link
+                print item.date
+                #now = datetime.now().strftime("%Y%m%d_%H%M%S")
+                #self.logfile = self.log_dir+"/"+self.shortname+"-get_detail_data-"+str(item.id)+"-"+now+".html"
+                #logfile = open(self.logfile, "w")
+                #logfile.write(parsedDetail.prettify())
+                #logfile.close()
+            return item
         except Exception, e:
             print self.shortname + " error:  " + str(e)
+            return None
 
     def _get_rss(self, code):
         parsedRss = feedparser.parse(code)
