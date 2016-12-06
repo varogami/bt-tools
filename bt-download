@@ -28,7 +28,7 @@ class Func:
         self.__json = self.__conf.getJson()
         self.__db = self.__conf.getDb()
         self.__debug = self.__conf.getDebug()
-        self.common = common.Func(self.__color, self.getModules(), self.__debug)
+        self.common = common.Func(self.__color, self.__json['module'], self.__debug)
     
     def iterative_download(self, args):
         for id in args:

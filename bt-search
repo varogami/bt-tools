@@ -29,7 +29,7 @@ class Func:
         self.__json = self.__conf.getJson()
         self.__db = self.__conf.getDb()
         self.__debug = self.__conf.getDebug()
-        self.common = common.Func(self.__color, self.getModules())
+        self.common = common.Func(self.__color, self.__json['module'],self.__debug)
         self.user_agent = self.__json['user_agent']
 
     def search(self, pattern, cat='all'):
@@ -87,9 +87,6 @@ class Func:
 
     def getColors(self):
         return self.__color
-
-    def getModules(self):
-        return self.__json['module']
             
     def __print_footer(self, name, count, new):
         print self.__color.blu + "end "+ name +" search - " + str(count) + new + " item " +  self.__color.base

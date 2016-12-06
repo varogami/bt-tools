@@ -20,6 +20,27 @@
 import subprocess, time
 import utils
 
+class Item:
+    def __init__(self, row, debug = False):
+        self.category = row[7]
+        self.name = row[4]
+        self.id = row[0]
+        self.module = row[1]
+        self.leech = row[10]
+        self.seed = row[11]
+        self.completed = row[12]
+        self.size = row[8]
+        self.url_module = row[2]
+        self.id_module = row[3]
+        self.url_item = row[5]
+        self.inserted_date = row[6]
+        self.torrent_date = row[9]
+        self.magnet = row[13]
+        self.url_torrent = row[14]
+        self.hash = row[15]
+        self.extra_info = row[16]
+        self.html = row[17]
+
 class Func:
     def __init__(self, color, modules, debug = False):
         self.color = color
@@ -29,10 +50,6 @@ class Func:
     def __isMode(self, value):
         result = False
         if value == "m1":
-            result = True
-        if value == "m2":
-            result = True
-        if value == "m3":
             result = True
         return result
 
@@ -44,11 +61,47 @@ class Func:
         size = utils.sizeof(row[8])
         cat = row[1] + " | " + self.getCategory(config, row[7], row[1])
         self.__print_item( str(row[0]), row[4], cat, str(row[10]), str(row[11]), str(row[12]), size )
-    
+        
+
+    def print_item_db_detail(self, row, config):
+        i = Item(row)
+        size = utils.sizeof(i.size)
+        cat = self.getCategory(config, i.category, i.module)
+        print self.color.magenta + i.name + self.color.base
+        self.__print_item_attribute("id", str(i.id))
+        self.__print_item_attribute("module", i.module)
+        self.__print_item_attribute("category", cat)
+        self.__print_item_attribute("leech", str(i.leech))
+        self.__print_item_attribute("seed", str(i.seed))
+        self.__print_item_attribute("completed", str(i.completed))
+        self.__print_item_attribute("size", size)
+        self.__print_item_attribute("url_module", i.url_module)
+        self.__print_item_attribute("id_module", str(i.id_module))
+        self.__print_item_attribute("url_item", i.url_item)
+        self.__print_item_attribute("inserted_date", str(i.inserted_date))
+        self.__print_item_attribute("torrent_date", str(i.torrent_date))
+        self.__print_item_attribute("magnet", i.magnet)
+        self.__print_item_attribute("url_torrent", i.url_torrent)
+        self.__print_item_attribute("hash", i.hash)
+        
+        if i.extra_info is None:
+            self.__print_item_attribute("extra_info", "not present")
+        else:
+            self.__print_item_attribute("extra_info", "present")
+            
+        if i.html is None:
+            self.__print_item_attribute("html", "not present")
+        else:
+            self.__print_item_attribute("html", "present")
+            
+        
     def __print_item(self, id_item, name, category, leech, seed, completed, size):
         print self.color.magenta + str(id_item) + " | " + category + \
             self.color.base + " " + name + \
             self.color.yellow  + "  " + "[l" + leech + " s" + seed + " c" + completed + "] " + size + self.color.base
+        
+    def __print_item_attribute(self, name, value):
+        print self.color.yellow + name + ": " + self.color.base + str(value)
                                            
     def print_error(self, string):
         print self.color.red + string + self.color.base
@@ -106,7 +159,6 @@ class Func:
             self.print_error("\"" + id + "\" not is number")
             return None
 
-        
     def download(self, config, db, id, mode):
         if self.__isMode(mode):
             if id != mode:
@@ -120,8 +172,15 @@ class Func:
             if result is not None:
                 self.print_item_db(result, config)
                 self.__launch_client(result, config)
-                
-                
+    def info(self, config, db, id):
+        result = self.__get_item(db, id)
+        if result is not None:
+            self.print_item_db_detail(result, config)
+
+    def get_item_url(self, db, id):
+        i = Item(self.__get_item(db, id))
+        return i.url_item
+    
     def getRss(self, cat, modname):
         engine = self.engines[modname]
         engine.getFeed(cat)

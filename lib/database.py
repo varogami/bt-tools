@@ -127,5 +127,32 @@ class Data:
         result=cur.fetchone()
         return result
 
-    def update_item(self, newitem):
-        pass
+    def update_item(self, id):
+        self.__con = sqlite3.connect(self.__file)
+        with self.__con:
+            cur = self.__con.cursor()
+            if item.data is not None:
+                blob_object = sqlite3.Binary(item.data)
+            else:
+                blob_object = None
+                    
+            if item.html is not None:
+                html = sqlite3.Binary(item.html)
+            else:
+                html = None
+                    
+            cur.execute('''UPDATE torrent SET(name,idate,type,size,date,leech,seed,completed,magnet,url_torrent,hash,object,html) = (?,?,?,?,?,?,?,?,?,?,?,?,?) WHERE id=?''', \
+                        (item.name, \
+                         item.idate, \
+                         item.type, \
+                         item.size, \
+                         item.date, \
+                         item.leech, \
+                         item.seed, \
+                         item.compl, \
+                         item.magnet, \
+                         item.torrent_link, \
+                         item.hashvalue, \
+                         blob_object, \
+                         html, \
+                         id))

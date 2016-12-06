@@ -31,97 +31,53 @@ class Func:
         self.__json = self.__conf.getJson()
         self.__db = self.__conf.getDb()
         self.__debug = self.__conf.getDebug()
-        self.common = common.Func(self.__color, self.getModules(), self.__debug)
-
-        #engine = self.__conf.load_mod(name, module_config, self.__conf.getLogDir(), self.user_agent)
+        self.common = common.Func(self.__color, self.__json['module'], self.__debug)
         
     def webpage(self, id):
-        dwinfo = common.Func().get(id)
-        print
-        subprocess.call([config.browser, dwinfo["link"]])
+        url = self.common.get_item_url(self.__db, id)
+        if url is not None:
+            if self.__debug:
+                print "DEBUG: launching \"" + self.__json["browser"] + " " + url + "\""
+            subprocess.call([self.__json["browser"], url])
 
     def update(self, id):
-        self.data.load()
-        type = id.split("-")[0]
-        trueid = id.split("-")[1]
-        isValidType = False
+        pass
         
-        #find element's engine
-        for engine in self.engines.values():
-            if type == engine.shortname:
-                isValidType = True
-                #get element's data by database
-                datalist = self.data.getList(engine.name)
-                item = datalist.getItem(trueid)
+    def info(self, id):
+        self.common.info(self.__json, self.__db, id)
+    
+    def __update_item(self, name_field, item, data):
+        pass
+        #engine = self.__conf.load_mod(name, module_config, self.__conf.getLogDir(), self.user_agent)
 
-                if not item.isVoid():
-                    link = item.getKey("link").getTxt()
-                    details = engine.makeVoidItem()
-                    details.link = link
-                    engine.get_detail_data(details)
-
-                    self._update_item("date", item, details.date)
-                    self._update_item("size", item, details.size)
-                    self._update_item("magnet", item, details.magnet)
-                    self._update_item("torrent-link", item, details.torrent_link)
-                    self._update_item("hashvalue", item, details.hashvalue)
-                    self._update_item("name", item, details.name)
-                    self._update_item("leech", item, details.leech)
-                    self._update_item("seed", item, details.seed)
-                    self._update_item("completed", item, details.compl)
-
-                    self.data.write()
-                else:
-                    common.Func().print_error("not found id \"" + id + "\"")
-        if not isValidType:
-           common.Func().print_error("not valid website code \"" + type + "\"")
-
-    def _update_item(self, name_field, item, data):
-        if not data == None:
-            item_key = item.getKey(name_field)
-            if item_key.isVoid():
-                item.addKey(name_field, data)
-                self._print_update("add " + name_field + ": ", data)
-            else:
-                item.updateKey( name_field, data )
-                self._print_update("update " + name_field + ": ", data)
-
-    def _print_update(self, string1, string2):
+    def __print_update(self, string1, string2):
         print config.color_blu + string1 + config.color_base + string2 
 
 
-class CLI:
-    def __init__(self):
+    def cli(self):
         if len(sys.argv) == 1:
             self.help()
         elif len(sys.argv) == 2:
-            self.show_info(sys.argv[1])
+            self.info(sys.argv[1])
         elif len(sys.argv) == 3:
             if sys.argv[2] == "web":
-                self.show_web_page(sys.argv[1])
-            elif sys.argv[2] == "update":
+                self.webpage(sys.argv[1])
+            elif sys.argv[2] == "up":
                 self.update(sys.argv[1])
             else:
                 common.Func().print_error( sys.argv[2] + " is bad parameter" )
         else:
             common.Func().print_error("too much parameters")
-            self.help()        
-    def show_info(self,id):
-        common.Func().get(id)
-        
-    def show_web_page(self,id):
-        Func().webpage(id)
-
-    def update(self,id):
-        Func().update(id)
+            self.help()                
         
     def help(self):
         print "use:"
-        print "bt-info ID"
-        print "bt-info ID web"
-        print "bt-info ID update"
+        print "bt-info ID - show info of item"
+        print "bt-info ID web - show webpage of item"
+        print "bt-info ID up - update item"
 
                         
 if __name__ == "__main__":
-    do = CLI()
+    do = Func()
+    do.cli()
     
