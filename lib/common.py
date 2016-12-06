@@ -180,6 +180,14 @@ class Func:
     def get_item_url(self, db, id):
         i = Item(self.__get_item(db, id))
         return i.url_item
+
+    def get_item_mod(self, db, id):
+        i = Item(self.__get_item(db, id))
+        return i.module
+
+    def update_item(self, db, item, id):
+        item.id = id
+        db.update_item(item)
     
     def getRss(self, cat, modname):
         engine = self.engines[modname]

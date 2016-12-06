@@ -57,10 +57,11 @@ class Module:
         for f in os.listdir(modules_dir):
             if os.path.isfile(os.path.join(modules_dir, f)):
                 if f.endswith('.py'):
-                    modname = f.replace('.py','')
-                    module = __import__(modname)
-                    print "    build default config of module - " + modname
-                    engines[modname] = module.Config().__dict__
+                    if f != '__init__.py' or f != '__init__.pyc':
+                        modname = f.replace('.py','')
+                        module = __import__(modname)
+                        print "    build default config of module - " + modname
+                        engines[modname] = module.Config().__dict__
     
 class Conky:
     def __init__(self):

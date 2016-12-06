@@ -41,7 +41,13 @@ class Func:
             subprocess.call([self.__json["browser"], url])
 
     def update(self, id):
-        pass
+        url = self.common.get_item_url(self.__db, id)
+        mod = self.common.get_item_mod(self.__db, id)
+        engine = self.__conf.load_mod(mod, self.__json['module'][mod], self.__conf.getLogDir(), self.__json['user_agent'])
+        item = engine.get_detail_data(url)
+        item.name = "test"
+        self.common.update_item(self.__db, item, id)
+        self.info(id)
         
     def info(self, id):
         self.common.info(self.__json, self.__db, id)

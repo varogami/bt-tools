@@ -231,7 +231,8 @@ class Data(module.Data):
             print item_obj.compl
             print item_obj.date 
  
-
+        return item_obj
+    
     def get_detail_data(self, item_obj):
         if self.debug:
             self.__get_detail_data(item_obj)

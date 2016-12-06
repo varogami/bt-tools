@@ -127,7 +127,7 @@ class Data:
         result=cur.fetchone()
         return result
 
-    def update_item(self, id):
+    def update_item(self, item):
         self.__con = sqlite3.connect(self.__file)
         with self.__con:
             cur = self.__con.cursor()
@@ -141,7 +141,7 @@ class Data:
             else:
                 html = None
                     
-            cur.execute('''UPDATE torrent SET(name,idate,type,size,date,leech,seed,completed,magnet,url_torrent,hash,object,html) = (?,?,?,?,?,?,?,?,?,?,?,?,?) WHERE id=?''', \
+            cur.execute('''UPDATE torrent SET name = ?,idate = ?,type = ?,size = ?,date = ?,leech = ?,seed = ?,completed = ?,magnet = ?,url_torrent = ?,hash = ?,object = ?,html = ? WHERE id=?''', \
                         (item.name, \
                          item.idate, \
                          item.type, \
@@ -155,4 +155,4 @@ class Data:
                          item.hashvalue, \
                          blob_object, \
                          html, \
-                         id))
+                         item.id))
