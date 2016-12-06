@@ -1,0 +1,63 @@
+#! /usr/bin/python
+# -*- coding=utf-8 -*-
+
+#bt-tools - tools to interact with some bittorrent sites by commandline
+#Copyright (C) 2015-2016  varogami@altervista.org
+
+#This program is free software: you can redistribute it and/or modify
+#it under the terms of the GNU General Public License as published by
+#the Free Software Foundation, either version 3 of the License, or
+#(at your option) any later version.
+
+#This program is distributed in the hope that it will be useful,
+#but WITHOUT ANY WARRANTY; without even the implied warranty of
+#MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#GNU General Public License for more details.
+
+#You should have received a copy of the GNU General Public License
+#along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+
+from lib import config
+from lib import utils
+from lib import common
+import sys
+import subprocess
+
+class Func:
+    def __init__(self):
+        self.__conf = config.Config()
+        self.__color = self.__conf.getColors()
+        self.__json = self.__conf.getJson()
+        self.__db = self.__conf.getDb()
+        self.__debug = self.__conf.getDebug()
+        self.common = common.Func(self.__color, self.__json['module'], self.__debug)
+
+        
+
+    def test(self):
+        from modules import tnt
+        url="http://forum.tntvillage.scambioetico.org/index.php?showtopic=533773"
+        url2="http://ilcorsaronero.info/tor/118614/Linux_Pro_Settembre_2016_By_PdS"
+        mod="icn"
+        engine = self.__conf.load_mod(mod, self.__json['module'][mod], self.__conf.getLogDir(), self.__json['user_agent'])
+        engine.get_detail_data(url2)
+        
+class CLI:
+    def __init__(self):
+        if len(sys.argv) == 1:
+            Func().test()
+        else:
+            common.Func().print_error("too much parameters")
+            self.help()        
+        
+    def help(self):
+        print "use:"
+        print "bt-info ID"
+        print "bt-info ID web"
+        print "bt-info ID update"
+
+                        
+if __name__ == "__main__":
+    do = CLI()
+    
