@@ -18,6 +18,9 @@ class Config(object):
 class Item(object):
     def __init__(self):
         self.name = None
+        self.module = None
+        self.id_module = None
+        self.link_module = None
         self.date = None 
         self.link = None
         self.size = None
@@ -54,6 +57,9 @@ class Item(object):
 
     def get_human_size(self):
         return utils.sizeof(int(self.size))
+
+    def update_idate(self):
+        self.idate = int(time.time())
 
 
 class Data(object):

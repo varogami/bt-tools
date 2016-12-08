@@ -50,7 +50,7 @@ class Data:
         self.__con = sqlite3.connect(self.__file)
         with self.__con:
             cur = self.__con.cursor()
-            cur.execute('''SELECT id FROM torrent WHERE module=? AND id_module=?''', (shortname, item.id))
+            cur.execute('''SELECT id FROM torrent WHERE module=? AND id_module=?''', (shortname, item.id_module))
             result=cur.fetchone()
             if result is None:
                 self.__new_item += 1
@@ -68,7 +68,7 @@ class Data:
                             (None, \
                             shortname, \
                             url_module, \
-                            item.id, \
+                            item.id_module, \
                             item.name, \
                             item.link, \
                             item.idate, \

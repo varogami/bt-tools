@@ -53,7 +53,7 @@ class Item(module.Item):
         self.size = utils.getBytes(size+" GB")
         
     def _set_id(self, link):
-        self.id = link.split("=")[1]
+        self.id_module = link.split("=")[1]
         
     def _set_date(self, date):
         months = { "Jan":1, "Feb":2, "Mar":3, "Apr":4, "May":5, "Jun":6, "Jul":7, "Aug":8, "Sep":9, "Oct":10, "Nov":11, "Dec":12 }
@@ -191,19 +191,18 @@ class Data(module.Data):
             
             if cat == '0':
                 img_cat = i.find('img')
-                cat = img_cat.get('src').split('/')[2].split('.')[0].replace("icon","")
+                newitem.type = img_cat.get('src').split('/')[2].split('.')[0].replace("icon","")
+            else:
+                newitem.type = cat
                 
-            newitem.type = cat
-            
             self.list.append(newitem)
         return parsedHtml
 
-    def get_detail_data(self, link):
+    def get_detail_data(self, item):
         detail=httplib2.Http()
-        item = Item()
         
         try:
-            resp,content=detail.request(link, 'GET')
+            resp,content=detail.request(item.link, 'GET')
             parsedDetail = BeautifulSoup(content,convertEntities=BeautifulSoup.HTML_ENTITIES)
             
             #check if link work without login
@@ -223,7 +222,9 @@ class Data(module.Data):
             #GET DATA
             item.torrent_link = torrent_link.get('href')
             date = parsedDetail.find('span', {'class':'postdetails'}).getText().replace("Inviato il:","")
-            item._set_date(date)
+            tmp_item = Item()
+            tmp_item._set_date(date)
+            item.date = tmp_item.date
             
             #Details table
             details_table_src = torrent_link.findParent().findParent().findParent()
@@ -250,10 +251,6 @@ class Data(module.Data):
 
             if self.debug:
                 print "DEBUG: detail data - id " + str(item.id)
-                print link
-                print item.hashvalue
-                print item.torrent_link
-                print item.date
                 #now = datetime.now().strftime("%Y%m%d_%H%M%S")
                 #self.logfile = self.log_dir+"/"+self.shortname+"-get_detail_data-"+str(item.id)+"-"+now+".html"
                 #logfile = open(self.logfile, "w")

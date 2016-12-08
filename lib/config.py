@@ -124,7 +124,7 @@ class Config:
             self.__build_config()
         
         self.__load_new_mod_conf()
-        print "load config           - " + self.__file_conf
+        #print "load config           - " + self.__file_conf
         with open(self.__file_conf) as data_file:
             self.__json = json.load(data_file)            
         self.__debug = self.__json['debug']

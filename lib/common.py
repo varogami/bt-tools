@@ -18,28 +18,7 @@
 #along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import subprocess, time
-import utils
-
-class Item:
-    def __init__(self, row, debug = False):
-        self.category = row[7]
-        self.name = row[4]
-        self.id = row[0]
-        self.module = row[1]
-        self.leech = row[10]
-        self.seed = row[11]
-        self.completed = row[12]
-        self.size = row[8]
-        self.url_module = row[2]
-        self.id_module = row[3]
-        self.url_item = row[5]
-        self.inserted_date = row[6]
-        self.torrent_date = row[9]
-        self.magnet = row[13]
-        self.url_torrent = row[14]
-        self.hash = row[15]
-        self.extra_info = row[16]
-        self.html = row[17]
+import module
 
 class Func:
     def __init__(self, color, modules, debug = False):
@@ -47,44 +26,63 @@ class Func:
         self.modules = modules
         self.__debug = debug
 
+    def build_item(self, row):
+        item = module.Item()
+        item.id = row[0]
+        item.module = row[1]
+        item.link_module = row[2]
+        item.id_module = row[3]
+        item.name = row[4]
+        item.link = row[5]
+        item.idate = row[6]
+        item.type = row[7]
+        item.size = row[8]
+        item.date = row[9]
+        item.leech = row[10]
+        item.seed = row[11]
+        item.compl = row[12]
+        item.magnet = row[13]
+        item.torrent_link = row[14]
+        item.hashvalue = row[15]
+        item.data = row[16]
+        item.html = row[17]
+        return item
+    
     def __isMode(self, value):
         result = False
         if value == "m1":
             result = True
         return result
 
-
     def print_item(self, id, i, config, mod):
         self.__print_item(id, i.name, self.getCategory(config, i.type, mod), i.leech, i.seed, i.compl, i.get_human_size())
 
     def print_item_db(self, row, config):
-        size = utils.sizeof(row[8])
-        cat = row[1] + " | " + self.getCategory(config, row[7], row[1])
-        self.__print_item( str(row[0]), row[4], cat, str(row[10]), str(row[11]), str(row[12]), size )
-        
+        i = self.build_item(row)
+        cat = i.module + " | " + self.getCategory(config, i.type, i.module)
+        self.__print_item( str(i.id), i.name, cat, str(i.leech), str(i.seed), str(i.compl), i.get_human_size() )
 
     def print_item_db_detail(self, row, config):
-        i = Item(row)
-        size = utils.sizeof(i.size)
-        cat = self.getCategory(config, i.category, i.module)
+        i = self.build_item(row)
+        cat = self.getCategory(config, i.type, i.module)
         print self.color.magenta + i.name + self.color.base
         self.__print_item_attribute("id", str(i.id))
         self.__print_item_attribute("module", i.module)
         self.__print_item_attribute("category", cat)
         self.__print_item_attribute("leech", str(i.leech))
         self.__print_item_attribute("seed", str(i.seed))
-        self.__print_item_attribute("completed", str(i.completed))
-        self.__print_item_attribute("size", size)
-        self.__print_item_attribute("url_module", i.url_module)
+        self.__print_item_attribute("completed", str(i.compl))
+        self.__print_item_attribute("size", i.get_human_size())
+        self.__print_item_attribute("url_module", i.link_module)
         self.__print_item_attribute("id_module", str(i.id_module))
-        self.__print_item_attribute("url_item", i.url_item)
-        self.__print_item_attribute("inserted_date", str(i.inserted_date))
-        self.__print_item_attribute("torrent_date", str(i.torrent_date))
+        self.__print_item_attribute("url_item", i.link)
+        self.__print_item_attribute("inserted_date", str(i.idate))
+        self.__print_item_attribute("torrent_date", str(i.date))
         self.__print_item_attribute("magnet", i.magnet)
-        self.__print_item_attribute("url_torrent", i.url_torrent)
-        self.__print_item_attribute("hash", i.hash)
+        self.__print_item_attribute("url_torrent", i.torrent_link)
+        self.__print_item_attribute("hash", i.hashvalue)
         
-        if i.extra_info is None:
+        if i.data is None:
             self.__print_item_attribute("extra_info", "not present")
         else:
             self.__print_item_attribute("extra_info", "present")
@@ -93,7 +91,6 @@ class Func:
             self.__print_item_attribute("html", "not present")
         else:
             self.__print_item_attribute("html", "present")
-            
         
     def __print_item(self, id_item, name, category, leech, seed, completed, size):
         print self.color.magenta + str(id_item) + " | " + category + \
@@ -172,22 +169,20 @@ class Func:
             if result is not None:
                 self.print_item_db(result, config)
                 self.__launch_client(result, config)
+                
     def info(self, config, db, id):
         result = self.__get_item(db, id)
         if result is not None:
             self.print_item_db_detail(result, config)
 
-    def get_item_url(self, db, id):
-        i = Item(self.__get_item(db, id))
-        return i.url_item
+    def get_item(self, db, id):
+        return self.build_item(self.__get_item(db, id))
 
-    def get_item_mod(self, db, id):
-        i = Item(self.__get_item(db, id))
-        return i.module
-
-    def update_item(self, db, item, id):
-        item.id = id
-        db.update_item(item)
+    def update_item(self, db, conf, json, id):
+        i = self.get_item(db, id)
+        engine = conf.load_mod(i.module, json['module'][i.module], conf.getLogDir(), json['user_agent'])
+        final_item = engine.get_detail_data(i)
+        db.update_item(final_item)
     
     def getRss(self, cat, modname):
         engine = self.engines[modname]

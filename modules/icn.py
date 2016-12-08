@@ -38,7 +38,7 @@ class Item(module.Item):
         self.size = utils.getBytes(size) 
      
     def _set_id(self, link):
-        self.id = link.split("/")[4]
+        self.id_module = link.split("/")[4]
            
     def _set_date(self, string):
         if len(string) < 20:
@@ -183,10 +183,9 @@ class Data(module.Data):
             if webitem.id == rssitem.id:
                 webitem.name = rssitem.name
                     
-    def __get_detail_data(self, link):
+    def __get_detail_data(self, item):
         result=httplib2.Http()
-        item_obj = Item()
-        resp,content=result.request(link, 'GET')
+        resp,content=result.request(item.link, 'GET')
         #parsedDetails = BeautifulSoup( content.decode("utf-8") ,convertEntities = BeautifulSoup.HTML_ENTITIES )
         parsedDetails = BeautifulSoup( content ,convertEntities = BeautifulSoup.HTML_ENTITIES )
 
@@ -194,9 +193,9 @@ class Data(module.Data):
         magnet_raw = parsedDetails.find('a',{'class':'forbtn','target':'_blank'})
         if magnet_raw == None:
             magnet_raw = parsedDetails.find('a',{'class':'forbtn magnet','target':'_blank'})
-        magnet = magnet_raw.get('href')
-        name_m = magnet.split("&tr=")[0].split("&dn=")[1]
-        name = urllib.unquote_plus(name_m)
+        item.magnet = magnet_raw.get('href')
+        name_m = item.magnet.split("&tr=")[0].split("&dn=")[1]
+        item.name = urllib.unquote_plus(name_m)
         
         ## another way to get name 
         #name = parsedDetails.find('title').getText().encode("iso-8859-1")
@@ -215,33 +214,25 @@ class Data(module.Data):
         else:
             description = None
          
-        item_obj.magnet = magnet
-        item_obj.name = name
-        item_obj.leech = tdodd2[3].findAll('font')[1].getText()
-        item_obj.seed = tdodd2[3].findAll('font')[0].getText()
-        item_obj.compl = tdodd2[4].findAll('td')[1].getText().replace("x","")
-        item_obj.date = item_obj._set_date(tdodd[1].findAll('td')[1].getText())
-        #item_obj.descr = description
-
-        if self.debug:
-            print item_obj.magnet
-            print item_obj.name 
-            print item_obj.leech 
-            print item_obj.seed 
-            print item_obj.compl
-            print item_obj.date 
+        item.leech = tdodd2[3].findAll('font')[1].getText()
+        item.seed = tdodd2[3].findAll('font')[0].getText()
+        item.compl = tdodd2[4].findAll('td')[1].getText().replace("x","")
+        tmp_item = Item()
+        tmp_item._set_date(tdodd[1].findAll('td')[1].getText())
+        item.date = tmp_item.date
+        #item.descr = description
  
-        return item_obj
+        return item
     
-    def get_detail_data(self, item_obj):
+    def get_detail_data(self, item):
         if self.debug:
-            self.__get_detail_data(item_obj)
+            return self.__get_detail_data(item)
         else:
             try:
-                self.__get_detail_data(item_obj)
+                return self.__get_detail_data(item)
             except Exception, e:
                 print self.shortname + " error:  " + str(e)
-
+                return None
         
     def __search(self, pattern, type):
         if self.adv:

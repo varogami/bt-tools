@@ -34,31 +34,22 @@ class Func:
         self.common = common.Func(self.__color, self.__json['module'], self.__debug)
         
     def webpage(self, id):
-        url = self.common.get_item_url(self.__db, id)
+        item = self.common.get_item(self.__db, id)
+        url = item.link
         if url is not None:
             if self.__debug:
                 print "DEBUG: launching \"" + self.__json["browser"] + " " + url + "\""
             subprocess.call([self.__json["browser"], url])
 
-    def update(self, id):
-        url = self.common.get_item_url(self.__db, id)
-        mod = self.common.get_item_mod(self.__db, id)
-        engine = self.__conf.load_mod(mod, self.__json['module'][mod], self.__conf.getLogDir(), self.__json['user_agent'])
-        item = engine.get_detail_data(url)
-        item.name = "test"
-        self.common.update_item(self.__db, item, id)
+    def update_info(self,id):
+        self.common.update_item(self.__db, self.__conf, self.__json, id)
         self.info(id)
         
     def info(self, id):
         self.common.info(self.__json, self.__db, id)
     
-    def __update_item(self, name_field, item, data):
-        pass
-        #engine = self.__conf.load_mod(name, module_config, self.__conf.getLogDir(), self.user_agent)
-
     def __print_update(self, string1, string2):
         print config.color_blu + string1 + config.color_base + string2 
-
 
     def cli(self):
         if len(sys.argv) == 1:
@@ -69,7 +60,7 @@ class Func:
             if sys.argv[2] == "web":
                 self.webpage(sys.argv[1])
             elif sys.argv[2] == "up":
-                self.update(sys.argv[1])
+                self.update_info(sys.argv[1])
             else:
                 common.Func().print_error( sys.argv[2] + " is bad parameter" )
         else:
