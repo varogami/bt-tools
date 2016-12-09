@@ -28,12 +28,12 @@ class Func:
         self.__json = self.__conf.getJson()
         self.__db = self.__conf.getDb()
         self.__debug = self.__conf.getDebug()
-        self.common = common.Func(self.__color, self.__json['module'], self.__debug)
+        self.common = common.Func(self.__conf)
     
     def iterative_download(self, args):
         for id in args:
             if not id == args[0]:
-                self.common.download(self.__json, self.__db, id, args[1])
+                self.common.download(id, args[1])
 
     def cli(self):
         if len(sys.argv) == 1:

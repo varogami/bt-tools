@@ -8,7 +8,7 @@ class Data:
         self.__new_item = 0
             
     def makeDb(self):
-        print "create database"
+        print "+create database"
         self.__create_tor_string= "CREATE TABLE torrent ( " + \
             "id INTEGER PRIMARY KEY AUTOINCREMENT," + \
             "module TEXT NOT NULL," + \

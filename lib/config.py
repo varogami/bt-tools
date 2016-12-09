@@ -14,7 +14,7 @@
 #You should have received a copy of the GNU General Public License
 #along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import json, os, sys, database
+import json, os, sys, database, common
 
 
 class Color:
@@ -37,31 +37,98 @@ class Rss:
         self.download_filtered = True
             
 class Module:
-    def __init__(self, ext_mod):
-        self.__ext_mod = ext_mod
-        self.list = self.__build_conf()
-        
-    def __build_conf(self):
-        #load modules config from "modules" dir
+    def __init__(self, ext_mod, mod_conf, debug = False):
+        self.__ext_modules = ext_mod
+        self.__mod_config_dir = mod_conf
+        self.__debug = debug
+        self.__json = None
+        self.list = []
+        self.__allJson = {}
+        self.__getList()
+
+    def __get_mod_dir(self):
         filepath = os.path.dirname(os.path.realpath(__file__))
-        moddir = os.path.dirname(filepath) + "/modules"
+        return os.path.dirname(filepath) + "/modules"
+        
+    def __getList(self):
+        modules_dir = self.__get_mod_dir()
+        self.__get_list_dir(modules_dir)
+        self.__get_list_dir(self.__ext_modules)
 
-        engines = {}
-        self.__load_mods(moddir,engines)
-        self.__load_mods(self.__ext_mod,engines)        
-        return engines
-
-    def __load_mods(self, modules_dir, engines):
-        sys.path.append(modules_dir)
-        print "  search modules in   - " + modules_dir
+    def __get_list_dir(self, modules_dir):
+        if self.__debug:
+            print "DEBUG: search modules in - " + modules_dir
         for f in os.listdir(modules_dir):
             if os.path.isfile(os.path.join(modules_dir, f)):
                 if f.endswith('.py'):
-                    if f != '__init__.py' or f != '__init__.pyc':
+                    if f != '__init__.py' and f != '__init__.pyc':
                         modname = f.replace('.py','')
-                        module = __import__(modname)
-                        print "    build default config of module - " + modname
-                        engines[modname] = module.Config().__dict__
+                        if modname not in self.list:
+                            self.list.append(modname)
+                            if self.__debug:
+                                print "DEBUG: found module - " + modname
+                        else:
+                            print Color().red + "ERROR: two modules with name \"" +modname+ "\"" + Color().base
+                        
+    def loadConf(self, name):
+        mod_config = self.__mod_config_dir + "/" + name + ".json"
+        if self.__debug:
+            print "DEBUG: check is exist - " + mod_config
+        if os.path.isfile(mod_config):
+            with open(mod_config) as data_file:
+                self.__json = json.load(data_file)
+            if self.__json['enabled']:
+                return True
+            else:
+                return False
+        else:
+            self.__build_conf(name)
+            with open(mod_config) as data_file:
+                self.__json = json.load(data_file)
+            return True
+
+
+    def __build_conf(self, name):
+        modules_dir = self.__get_mod_dir()
+        mod_config = self.__mod_config_dir + "/" + name + ".json"
+        
+        print "+build config for module " + name
+        
+        data = self.__load_mods(modules_dir, name)
+        if data is None:
+            data = self.__load_mods(self.__ext_mod,name)        
+        if data is None:
+            print Color().red + "ERROR: problem to build config for module " + name + Color().base
+        
+        self.__build_json(mod_config, data)
+        
+    def __build_json(self, file_conf, data):
+        print "+write config " + file_conf
+        DataFile = open(file_conf, "w")
+        data = json.dumps(data, indent=4, separators=(',', ': '), sort_keys=True)
+        DataFile.write(data)
+        DataFile.close()
+
+
+    def __load_mods(self, modules_dir, name):
+        sys.path.append(modules_dir)
+        f = name + ".py"
+        if os.path.isfile(os.path.join(modules_dir, f)):            
+            module = __import__(name)
+            print "+" +name+ " loaded module to build config"
+            return module.Config().__dict__
+        else:
+            print "ERROR: " + os.path.join(modules_dir, f) + " not found"
+            return None
+
+    def getJson(self):
+        return self.__json
+
+    def getAllJson(self):
+        for name in self.list:
+            if self.loadConf(name):
+                self.__allJson[name] = self.getJson()
+        return self.__allJson
     
 class Conky:
     def __init__(self):
@@ -76,7 +143,7 @@ class Conky:
 
         
 class Data:
-    def __init__(self, moddir):
+    def __init__(self):
         self.conf_version = "0.0.1"
         self.export_file = "export-database.xml"
         self.torrent_client = "qbittorrent-nox"
@@ -91,7 +158,6 @@ class Data:
         self.date_format = "" #TODO
         self.rss = Rss().__dict__
         self.conky = Conky().__dict__
-        self.module = Module(moddir).list
         self.links = {}
         self.links['torcache'] = "http://torcache.net/torrent/"
         self.links['zoink'] = "https://zoink.it/torrent/"
@@ -102,40 +168,47 @@ class Config:
         self.__color = Color()
         self.__dir = os.environ['HOME'] + "/.config/bt-tools"
         self.__dir_mod =  self.__dir + "/modules"
-        self.__dir_log =  self.__dir + "/log"       
+        self.__dir_log =  self.__dir + "/log"
+        self.__mod_conf =  self.__dir + "/modules_conf"       
         self.__file_conf = self.__dir + "/config.json"
         self.__file_db = self.__dir + "/database.sqlite"
+
         
         if not os.path.exists(self.__dir):
-            print "config dir not exist  - create: " + self.__dir
+            print "+create " + self.__dir
             os.mkdir(self.__dir)
             
         if not os.path.exists(self.__dir_mod):
-            print "modules dir not exist - create: " + self.__dir_mod
+            print "+create " + self.__dir_mod
             os.mkdir(self.__dir_mod)
             
         if not os.path.exists(self.__dir_log):
-            print "log dir not exist  - create: " + self.__dir_log
+            print "+create " + self.__dir_log
             os.mkdir(self.__dir_log)
 
+        if not os.path.exists(self.__mod_conf):
+            print "+create " + self.__mod_conf
+            os.mkdir(self.__mod_conf)
+            
         if not os.path.exists(self.__file_conf):
-            print "config file not exist - build data "
-            self.__data = Data(self.__dir_mod)
+            print "+build config file "
+            self.__data = Data()
             self.__build_config()
         
-        self.__load_new_mod_conf()
-        #print "load config           - " + self.__file_conf
+            
+        #load config
         with open(self.__file_conf) as data_file:
             self.__json = json.load(data_file)            
         self.__debug = self.__json['debug']
-
-        self.__db = database.Data(self.__file_db, self.__debug)
         
+        self.module = Module(self.__dir_mod, self.__mod_conf, self.__debug)
+        
+        self.__db = database.Data(self.__file_db, self.__debug)       
         if not os.path.exists(self.__file_db):
             self.__db.makeDb()
             
     def __build_config(self):
-        print "write config json     - " + self.__file_conf
+        print "+write config " + self.__file_conf
         DataFile = open(self.__file_conf, "w")
         data = json.dumps(self.__data.__dict__, indent=4, separators=(',', ': '), sort_keys=True)
         DataFile.write(data)
@@ -153,7 +226,7 @@ class Config:
     def getDebug(self):
         return self.__debug
     
-    def load_mod(self, name, config, log_dir, user_agent):
+    def load_mod(self, name, config):
         #load modules config from "modules" dir
         filepath = os.path.dirname(os.path.realpath(__file__))
         moddir = os.path.dirname(filepath) + "/modules"
@@ -163,16 +236,11 @@ class Config:
         if os.path.isfile(os.path.join(moddir, name+'.py')) or \
           os.path.isfile(os.path.join(self.__dir_mod, name+'.py')):
             module = __import__(name)
-            return module.Data(name, config, log_dir, user_agent, self.__debug)
+            return module.Data(name, config, self.__dir_log, self.__json['user_agent'], self.__debug)
         else:
-            print self.__color.red + "module " + name + " not found" + self.__color.base
+            print self.__color.red + "ERROR: module " + name + " not found" + self.__color.base
             return None
 
-    def __load_new_mod_conf(self):
-        #check for new mod
-        #if true load json - add new mod - save json
-        pass
-    
 
     def getDb(self):
         return self.__db

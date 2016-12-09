@@ -29,8 +29,7 @@ class Func:
         self.__json = self.__conf.getJson()
         self.__db = self.__conf.getDb()
         self.__debug = self.__conf.getDebug()
-        self.common = common.Func(self.__color, self.__json['module'],self.__debug)
-        self.user_agent = self.__json['user_agent']
+        self.common = common.Func(self.__conf)
 
     def search(self, pattern, cat='all'):
         if cat == "cache":
@@ -45,14 +44,15 @@ class Func:
         
     def __search(self, pattern, cat):
         #load all modules config
-        for name, module_config in self.__json['module'].iteritems() :
-            if module_config['enabled']:
+        for name in self.__conf.module.list:
+            if self.__conf.module.loadConf(name):
+                module_config = self.__conf.module.getJson()
                 #print module info
                 print self.__color.blu + name + " - " + module_config['url'] + self.__color.red
                 #check if exist catalog type on module
                 if cat in module_config['cats']:
                     #load module
-                    engine = self.__conf.load_mod(name, module_config, self.__conf.getLogDir(), self.user_agent)
+                    engine = self.__conf.load_mod(name, module_config)
                     if engine.search(pattern,cat):
                         self.__db.resetCountNew()
                         #print result count
@@ -60,7 +60,7 @@ class Func:
                         #insert items in db and print them 
                         for i in engine.list:
                             id = self.__db.insert(name, module_config['url'], i)
-                            self.common.print_item(id, i, self.__json, name)
+                            self.common.print_item(id, i, module_config)
                         self.__print_footer(name, self.__db.getCountNew()," new")
                         print
                     else:
@@ -70,18 +70,22 @@ class Func:
             
     def __search_in_db(self, pattern):
         result = self.__db.search_by_name(pattern)
+        allJson = self.__conf.module.getAllJson()
         count=0
         for row in result:
-            self.common.print_item_db(row, self.__json)
+            mod_config = allJson[row[1]]
+            self.common.print_item_db(row, mod_config)
             count+=1
         self.__print_footer("cache", count, "")
         
     def __search_hash_in_db(self, hash):
         print self.__color.green + "SEARCH HASH: " + hash.upper() + self.__color.base
         result = self.__db.search_by_hash(hash)
+        allJson = self.__conf.module.getAllJson()
         count=0
         for row in result:
-            self.common.print_item_db(row, self.__json)
+            mod_config = allJson[row[1]]
+            self.common.print_item_db(row, mod_config)
             count+=1
         self.__print_footer("hash", count, "")
 
@@ -90,22 +94,18 @@ class Func:
             
     def __print_footer(self, name, count, new):
         print self.__color.blu + "end "+ name +" search - " + str(count) + new + " item " +  self.__color.base
-
         
-        
-class CLI:
-    def __init__(self):
-        self.do = Func()
-        self.color = self.do.getColors()
+    def cli(self):
+        self.color = self.__color
         
         if len(sys.argv) == 1:
             self.help()
         elif len(sys.argv) == 2:
-            self.do.search(sys.argv[1])
+            self.search(sys.argv[1])
         elif len(sys.argv) == 3:
-            self.do.search(sys.argv[1],sys.argv[2])
+            self.search(sys.argv[1],sys.argv[2])
         else:
-            self.do.common.print_error("too much parameter")
+            self.common.print_error("too much parameter")
 
     def help(self):
         print "bt-search \"words\"                          - normal search"
@@ -119,10 +119,11 @@ class CLI:
         print
         print "CATEGORY LIST and SUPPORTED MODULES"
         print "cache: " + self.color.blu + "local search" + self.color.base
-        self.do.common.lscat()
+        self.common.lscat()
 
         
         
 
 if __name__ == "__main__":
-    do = CLI()
+    do = Func()
+    do.cli()

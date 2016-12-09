@@ -31,22 +31,22 @@ class Func:
         self.__json = self.__conf.getJson()
         self.__db = self.__conf.getDb()
         self.__debug = self.__conf.getDebug()
-        self.common = common.Func(self.__color, self.__json['module'], self.__debug)
+        self.common = common.Func(self.__conf)
         
     def webpage(self, id):
-        item = self.common.get_item(self.__db, id)
+        item = self.common.get_item(id)
         url = item.link
         if url is not None:
             if self.__debug:
                 print "DEBUG: launching \"" + self.__json["browser"] + " " + url + "\""
             subprocess.call([self.__json["browser"], url])
 
-    def update_info(self,id):
-        self.common.update_item(self.__db, self.__conf, self.__json, id)
+    def update_info(self, id):
+        self.common.update_item(id)
         self.info(id)
         
     def info(self, id):
-        self.common.info(self.__json, self.__db, id)
+        self.common.info(id)
     
     def __print_update(self, string1, string2):
         print config.color_blu + string1 + config.color_base + string2 
