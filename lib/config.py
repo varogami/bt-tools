@@ -29,12 +29,6 @@ class Color:
         self.cyan = '\033[96m'
         self.base = '\033[0m'
 
-class Rss:
-    def __init__(self):
-        self.enabled = False
-        self.dir =  None
-        self.show_limit = 40    
-        self.download_filtered = True
             
 class Module:
     def __init__(self, ext_mod, mod_conf, debug = False):
@@ -80,6 +74,7 @@ class Module:
             if self.__json['enabled']:
                 return True
             else:
+                self.__json = None
                 return False
         else:
             self.__build_conf(name)
@@ -129,39 +124,38 @@ class Module:
             if self.loadConf(name):
                 self.__allJson[name] = self.getJson()
         return self.__allJson
-    
-class Conky:
-    def __init__(self):
-        self.chars_to_print = 90
-        self.rows_to_print = 6
-        self.font = "Sans Mono:size=8"
-        self.font_bold = "Sans Mono:bold:size=8"
-        self.color1="color2"
-        self.color2="color"
-        self.color_line_even="color4"
-        self.color_line_odd="color"
 
         
 class Data:
     def __init__(self):
         self.conf_version = "0.0.1"
-        self.export_file = "export-database.xml"
         self.torrent_client = "qbittorrent-nox"
         self.user_agent = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/51.0.2704.106 Safari/537.36"
         self.debug = False
-        self.dir_cache = None #TODO
         self.dir_download = None #TODO
-        self.browser = "w3m" #"dwv" "qupzilla" "midori"
-        self.download_bt_file_only = True #TODO
-        self.filter_download_file_only = True
+        self.browser = "w3m"
         self.output_string_limit = 80 #used by bt-download
         self.date_format = "" #TODO
-        self.rss = Rss().__dict__
-        self.conky = Conky().__dict__
+
+        self.rss = {}
+        self.rss['enabled'] = False
+        self.rss['dir'] =  None
+        self.rss['show_limit'] = 40    
+        self.rss['download_filtered'] = True
+
+        self.conky = {}
+        self.conky['chars_to_print'] = 90
+        self.conky['rows_to_print'] = 6
+        self.conky['font'] = "Sans Mono:size=8"
+        self.conky['font_bold'] = "Sans Mono:bold:size=8"
+        self.conky['color1'] = "color2"
+        self.conky['color2'] = "color"
+        self.conky['color_line_even'] = "color4"
+        self.conky['color_line_odd'] = "color"
+        
         self.links = {}
         self.links['torcache'] = "http://torcache.net/torrent/"
         self.links['zoink'] = "https://zoink.it/torrent/"
-
         
 class Config:
     def __init__(self):

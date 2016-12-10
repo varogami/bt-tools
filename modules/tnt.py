@@ -11,41 +11,46 @@ class Config(module.Config):
         self.name="tnt village"
         self.username = "INSERT USERNAME"
         self.password = "INSERT PASSWORD"
-        self.rss_light_download = True
-        self.num_rss_item = 20
         self.default_cat = 'all'
         self.cats = {
             "all":"0",
-            "programmi_tv":"1",
+            "tv_misc":"1",
             "music":"2",
-            "books":"3",
+            "book":"3",
             "movie":"4",
-            "apps_linux":"6",
+            "app_linux":"6",
             "anime":"7",
-            "cartoons":"8",
-            "apps_mac":"9",
-            "apps_win":"10",
-            "games_pc":"11",
-            "games_playstation_2":"12",
-            "apps_students_release":"13",
-            "movie_documentary":"14",
+            "cartoon":"8",
+            "app_mac":"9",
+            "app_win":"10",
+            "game_pc":"11",
+            "game_psx2":"12",
+            "app_student":"13",
+            "movie_doc":"14",
             "movie_music":"21",
             "sport":"22",
             "movie_theater":"23",
             "wrestling":"24",
             "other":"25",
-            "games_xbox":"26",
-            "immagini_sfondi":"27",
-            "games_other":"28",
+            "game_xbox":"26",
+            "image_wall":"27",
+            "game_other":"28",
             "tv":"29",
-            "comics":"30",
+            "comic":"30",
             "trash":"31",
-            "games_playstation_1":"32",
-            "games_psp_portable":"33",
-            "books_audio":"34",
+            "game_psx1":"32",
+            "game_psp":"33",
+            "book_audio":"34",
             "podcast":"35",
-            "books_edicola":"36",
-            "apps_mobile":"37"    
+            "book_edicola":"36",
+            "app_mobile":"37"    
+        }
+        self.rss = {
+            "num_item" : 20,
+            "enabled" : False,
+            "feeds" : [
+                "movie", "tv"
+            ]
         }
 
 class Item(module.Item):
@@ -198,6 +203,22 @@ class Data(module.Data):
             self.list.append(newitem)
         return parsedHtml
 
+    def search(self, pattern, type):
+        if self.username == "INSERT USERNAME":
+            print "tnt error: username and password not configured"
+            return False
+        else:
+            if self.debug:
+                print "DEBUG: search \"" + pattern + "\" in category \"" + type + "\""
+            self._try_login()
+            if self.cookie is not None:
+                result = self._run_search(pattern,self.cats[type])
+                self._logout()
+                return result
+            else:
+                print self.shortname + " error:  none cookie - no login"
+                return False
+
     def get_detail_data(self, item):
         detail=httplib2.Http()
         
@@ -281,21 +302,6 @@ class Data(module.Data):
 
             self.list.append(newitem)
 
-    def search(self, pattern, type):
-        if self.username == "INSERT USERNAME":
-            print "tnt error: username and password not configured"
-            return False
-        else:
-            if self.debug:
-                print "DEBUG: search \"" + pattern + "\" in category \"" + type + "\""
-            self._try_login()
-            if self.cookie is not None:
-                result = self._run_search(pattern,self.cats[type])
-                self._logout()
-                return result
-            else:
-                print self.shortname + " error:  none cookie - no login"
-                return False
 
     def getFeed(self, type):
         self.cat = type

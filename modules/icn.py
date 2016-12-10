@@ -19,17 +19,17 @@ class Config(module.Config):
             "movie_screener":"19",
             "anime":"5",
             "tv":"15",
-            "apps_linux":"8",
-            "apps_mac":"9",
-            "apps_win":"7",
+            "app_linux":"8",
+            "app_mac":"9",
+            "app_win":"7",
             "music":"2",
-            "books_audio":"18",
-            "games_pc":"3",
-            "games_playstation":"13",
-            "games_xbox":"14",
+            "book_audio":"18",
+            "game_pc":"3",
+            "game_psx":"13",
+            "game_xbox":"14",
             "hacking":"16",
             "other":"4",
-            "books":"6"
+            "book":"6"
         }
 
 

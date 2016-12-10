@@ -76,14 +76,14 @@ class Func:
         self.__print_item_attribute("seed", str(i.seed))
         self.__print_item_attribute("completed", str(i.compl))
         self.__print_item_attribute("size", i.get_human_size())
-        self.__print_item_attribute("url_module", i.link_module)
+        self.__print_item_attribute("link_module", i.link_module)
         self.__print_item_attribute("id_module", str(i.id_module))
-        self.__print_item_attribute("url_item", i.link)
+        self.__print_item_attribute("link", i.link)
         self.__print_item_attribute("inserted_date", str(i.idate))
-        self.__print_item_attribute("torrent_date", str(i.date))
+        self.__print_item_attribute("date", str(i.date))
         self.__print_item_attribute("magnet", i.magnet)
-        self.__print_item_attribute("url_torrent", i.torrent_link)
-        self.__print_item_attribute("hash", i.hashvalue)
+        self.__print_item_attribute("torrent_link", i.torrent_link)
+        self.__print_item_attribute("hashvalue", i.hashvalue)
         
         if i.data is None:
             self.__print_item_attribute("extra_info", "not present")
@@ -112,8 +112,8 @@ class Func:
     def lscat(self):
         listcat = {}
         listcatsorted = []
+        
         #build list
-
         for name in self.__conf.module.list:
             if self.__conf.module.loadConf(name):
                 module_config = self.__conf.module.getJson()
@@ -144,9 +144,10 @@ class Func:
         
     def __launch_client(self, url):
         print self.color.cyan + "launching:"
-        #url[:config["output_string_limit"]]
-        print self.__json["torrent_client"] + " " + url + "..." + self.color.base
-        #subprocess.call([config["torrent_client"], "test"])
+        limit = self.__json["output_string_limit"]
+        client = self.__json["torrent_client"] 
+        print  client + " " + url[:limit] + "..." + self.color.base
+        subprocess.call([client, url])
         #fix a bug with qbittorrent
         time.sleep(5)
         print
