@@ -3,6 +3,7 @@ from BeautifulSoup import BeautifulSoup
 from datetime import datetime, date
 from lib import module
 from lib import utils
+import feedparser
 
 class Config(module.Config):
     def __init__(self):
@@ -31,7 +32,13 @@ class Config(module.Config):
             "other":"4",
             "book":"6"
         }
-
+        self.rss = {
+            "num_item" : 20,
+            "enabled" : False,
+            "feeds" : [
+                "movie", "tv"
+            ]
+        }
 
 class Item(module.Item):
     def _set_size(self, size):
@@ -55,8 +62,9 @@ class Data(module.Data):
     def __init__(self, name, config, log_dir, user_agent, debug = False):
         module.Data.__init__(self,name,config,log_dir,user_agent,debug)
         self.adv = config['advanced_search']
-        self.rss_light_download = config['rss_light_download']
-                
+        self.rss_conf = config['rss']
+        self.__mod_conf = config
+        
     def _run_search(self,pattern,cat):
         result=httplib2.Http()
         if cat == "all":
@@ -153,35 +161,8 @@ class Data(module.Data):
         else:
             newitem.compl = newitem.nodata
 
-            
-
         self.list.append(newitem)
 
-    def _get_rss(self,type):
-        import feedparser
-        uri=self.url+'/rsscat.php?cat='+self.cats[type]
-        result=httplib2.Http()
-        resp,content=result.request(uri, 'GET')
-        parsedRss = feedparser.parse(content)        
-        tmplist = []
-        for i in parsedRss.entries:
-            name = i['title']
-            link = i['link']
-            newitem = Item(name,'01.01.01',link,'0 byte')
-            tmplist.append(newitem)
-        return tmplist
-
-    def _build_new_rss(self, rssdata):
-        for rssitem in rssdata:
-            count=0
-            webitem = self.list[count]
-            #find element from data get by website
-            while webitem.id != rssitem.id:
-                count = count+1
-                webitem = self.list[count]
-            #if element found set variables
-            if webitem.id == rssitem.id:
-                webitem.name = rssitem.name
                     
     def __get_detail_data(self, item):
         result=httplib2.Http()
@@ -251,9 +232,8 @@ class Data(module.Data):
                 print self.shortname + " error:  " + str(e)
                 return False
             
-    def getLastTypePage(self, type):
+    def _get_rss_fake(self, type):
         '''build data object of single category (only 1 page)'''
-        self.cat=type
         uri=self.url+"/cat/"+self.cats[type]
         result=httplib2.Http()
         resp,content=result.request(uri, 'GET')
@@ -261,20 +241,35 @@ class Data(module.Data):
         #self._get_data(content.decode("utf-8"))
         self._get_data(content)
 
+    def _get_rss(self,type):
+        uri=self.url+'/rsscat.php?cat='+self.cats[type]
+        result=httplib2.Http()
+        resp,content=result.request(uri, 'GET')
+        parsedRss = feedparser.parse(content)
+
+        if self.debug:
+            now = datetime.now().strftime("%Y%m%d_%H%M%S")
+            self.logfile = self.log_dir+"/"+self.shortname+"-rss-"+type+"-"+now+".xml"
+            logfile = open(self.logfile, "w")
+            logfile.write(content)
+            logfile.close()
+
+        for i in parsedRss.entries:
+            newitem = Item()
+            newitem.name = i['title']
+            newitem.link = i['link']
+            newitem._set_id(newitem.link)
+            newitem.size = 0
+            newitem.compl = newitem.nodata
+            newitem.seed = newitem.nodata
+            newitem.leech = newitem.nodata
+            newitem.type = self.cats[type]
+            
+            self.list.append(newitem)
+        return uri
+    
     def getFeed(self, type):
         #try:
-            if self.rss_light_download:
-                #build data object by downloading rss feed
-                feedlist = self._get_rss(type)
-        
-                #download web page of specific category and build data object (self.list)
-                self.getCategory(type)
-
-                #build new rss
-                self._build_new_rss(feedlist)
-            else:
-                #download web page of specific category and build data object (self.list)
-                self.getCategory(type)
-
+            return self._get_rss(type)
         #except Exception, e:
         #    print self.shortname +" error:  " + str(e)

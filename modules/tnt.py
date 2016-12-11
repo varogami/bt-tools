@@ -46,7 +46,8 @@ class Config(module.Config):
             "app_mobile":"37"    
         }
         self.rss = {
-            "num_item" : 20,
+            "url" : "http://www.tntvillage.scambioetico.org/rss.php?c=",
+            "num_item" : "20",
             "enabled" : False,
             "feeds" : [
                 "movie", "tv"
@@ -55,7 +56,11 @@ class Config(module.Config):
 
 class Item(module.Item):
     def _set_size(self,size):
-        self.size = utils.getBytes(size+" GB")
+        self.size = utils.getBytes(size+" GB"
+        )
+    def _set_size_rss(self, size):
+        fixed_size = size.replace(",","")
+        self.size = utils.getBytes(fixed_size)
         
     def _set_id(self, link):
         self.id_module = link.split("=")[1]
@@ -89,6 +94,7 @@ class Data(module.Data):
         self.password = config['password']
         self.cookie = None
         self.rss_conf = config['rss']
+        self.__mod_conf = config
                                
     def _try_login(self):
         c=httplib2.Http()
@@ -281,7 +287,7 @@ class Data(module.Data):
             print self.shortname + " error:  " + str(e)
             return None
 
-    def _get_rss(self, code):
+    def _get_rss(self, code, type):
         parsedRss = feedparser.parse(code)
     
         for i in parsedRss.entries:
@@ -291,25 +297,43 @@ class Data(module.Data):
             rssdesc = i['description'].split("Desc:")[1]
             itemsDesc = BeautifulSoup(rssdesc,convertEntities=BeautifulSoup.HTML_ENTITIES).findAll('b')
             #desc = itemsDesc[0].text
-            newitem.descr = ""
-            newitem.size = itemsDesc[3].text
+            #newitem.name = name + " " + descr            
+            size = itemsDesc[3].text
             newitem.seed = itemsDesc[1].text
             newitem.leech = itemsDesc[2].text
-            newitem.compl = "x" #prendere dalla descrizione
+            newitem.compl = newitem.nodata
             newitem.date = i['published']
             newitem.torrent_link = i.enclosures[0]['href']
-
+            newitem._set_id(newitem.link)
+            newitem._set_size_rss(size)
+            newitem.type = type
+                        
             self.list.append(newitem)
 
 
+    def __get_feed(self,type):
+        uri= self.rss_conf['url'] + str(self.__mod_conf["cats"][type]) + "&p=" + str(self.rss_conf['num_item'])
+        result=httplib2.Http()
+        resp,content=result.request(uri, 'GET')
+
+        if self.debug:
+            now = datetime.now().strftime("%Y%m%d_%H%M%S")
+            self.logfile = self.log_dir+"/"+self.shortname+"-rss-"+type+"-"+now+".xml"
+            logfile = open(self.logfile, "w")
+            logfile.write(content)
+            logfile.close()
+
+        self._get_rss(content, self.__mod_conf["cats"][type])
+        return uri
+
     def getFeed(self, type):
-        self.cat = type
-        try:
-            uri= 'http://www.tntvillage.scambioetico.org/rss.php?c=' + self.cats[type] + "&p=" + str(self.rss_conf['num_item'])
-            result=httplib2.Http()
-            resp,content=result.request(uri, 'GET')
-            self._get_rss(content)
-        except Exception, e:
-            print self.shortname + " error:  " + str(e)
+        if self.debug:
+            return self.__get_feed(type)
+        else:
+            try:
+                return self.__get_feed(type)
+            except Exception, e:
+                print self.shortname + " error:  " + str(e)
+                return ""
             
 

@@ -8,7 +8,7 @@ class Data:
         self.__new_item = 0
         self.__new_item_extra = 0
 
-    def self.check_version(self):
+    def check_version(self):
         return True
     
     def makeDb(self):
@@ -98,16 +98,16 @@ class Data:
         self.__con = sqlite3.connect(self.__file)
         with self.__con:
             cur = self.__con.cursor()
-            cur.execute('''SELECT id FROM extra_info WHERE id_item=? AND key=? AND value=?''', (id, key, value))
+            cur.execute('''SELECT id FROM extra_info WHERE id_item=? AND key=?''', (id, key))
             result=cur.fetchone()
             if result is None:
                 self.__new_item_extra += 1
                     
-                cur.execute('''INSERT INTO rss VALUES(?,?)''', (None, id))
+                cur.execute('''INSERT INTO extra_info VALUES(?,?,?,?)''', (None, id, key, value))
                 lid = cur.lastrowid
-                return lid
+                return True
             else:
-                return result[0]
+                return False
             
     def getCountNew(self):
         return self.__new_item
@@ -126,14 +126,14 @@ class Data:
         with self.__con:
             cur = self.__con.cursor()
             words=pattern.split(" ")
-            count=0
+            begin=True
             sql="SELECT * FROM torrent WHERE name LIKE "
             for word in words:
-                if count == 0:
+                if begin:
                   sql = sql + "'%"+word+"%'"
+                  begin=False
                 else:
                   sql = sql + " AND name LIKE '%"+word+"%'"
-                count+=1
                 
             cur.execute(sql)
             result=cur.fetchall()

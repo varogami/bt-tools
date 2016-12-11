@@ -64,7 +64,7 @@ class Func:
                         for i in engine.list:
                             id = self.__db.insert(name, module_config['url'], i)
                             self.common.print_item(id, i, module_config)
-                        self.__print_footer(name, self.__db.getCountNew()," new")
+                        self.common.print_footer(name, "search", self.__db.getCountNew()," new")
                         print
                     else:
                         print self.__color.red + name + " search error: something not work" + self.__color.base 
@@ -93,13 +93,11 @@ class Func:
             mod_config = self.__conf.module.getModJson(row[1])
             self.common.print_item_db(row, mod_config)
             count+=1
-        self.__print_footer(type, count, "")
+        self.common.print_footer(type, "search", count, "")
 
     def getColors(self):
         return self.__color
             
-    def __print_footer(self, name, count, new):
-        print self.__color.blu + "end "+ name +" search - " + str(count) + new + " item " +  self.__color.base
         
     def cli(self):
         self.color = self.__color

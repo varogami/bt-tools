@@ -86,7 +86,10 @@ class Func:
             self.__print_item_attribute("html", "not present")
         else:
             self.__print_item_attribute("html", "present")
-        
+
+    def print_footer(self, name, type, count, new):
+        print self.color.blu + "end "+ name + " " + type + " - " + str(count) + new + " item " +  self.color.base
+
     def __print_item(self, id_item, name, category, leech, seed, completed, size):
         limit = self.__json["output_string_limit"]
         if len(name) > limit:

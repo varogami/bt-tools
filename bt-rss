@@ -36,23 +36,24 @@ class Func:
         for name in self.__conf.module.list:
             if self.__conf.module.loadConf(name):
                 module_config = self.__conf.module.getModJson(name)                
-                #print module info
-                print self.__color.blu + name + " - " + module_config['url'] + self.__color.red
-                #check if exist catalog type on module
+                #print info
                 if module_config['rss']['enabled']:
                     #load module
                     engine = self.__conf.load_mod(name, module_config)
-                    for cat in module_config['rss']['feeds'].iteritems():
-                        engine.getFeed(cat)
+                    for cat in module_config['rss']['feeds']:
+                        print self.__color.red
+                        url_feed = engine.getFeed(cat)
+                        print self.__color.blu + name + " - " + cat + " - feed " + url_feed + self.__color.red
                         self.__db.resetCountNewExtra()
                         for i in engine.list:
                             id = self.__db.insert(name, module_config['url'], i)
-                            url = ""
-                            id_extra = self.__db.insert_extra(id, "rss", url)
-                            self.common.print_item(id, i, module_config)
+                            if self.__db.insert_extra(id, "rss", name):
+                                self.common.print_item(id, i, module_config)
                             ##TODO - rss filter
                             ##TODO - rss filter download file torrent
-                        print self.__db.getCountNewExtra()
+                        engine.list = []
+                        self.common.print_footer(name, "feed", self.__db.getCountNewExtra()," new")
+                        print
                         ##TODO - generation local rss for site without rss
 
     def cli(self):
