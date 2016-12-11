@@ -37,6 +37,9 @@ class Func:
             print self.__color.base 
         elif cat == "hash":
             self.__search_hash_in_db(pattern)
+            print self.__color.base
+        elif cat == "hashid":
+            self.__search_hash_in_db_by_id(pattern)
             print self.__color.base 
         else:
             self.__search(pattern,cat)
@@ -46,7 +49,7 @@ class Func:
         #load all modules config
         for name in self.__conf.module.list:
             if self.__conf.module.loadConf(name):
-                module_config = self.__conf.module.getJson()
+                module_config = self.__conf.module.getModJson(name)
                 #print module info
                 print self.__color.blu + name + " - " + module_config['url'] + self.__color.red
                 #check if exist catalog type on module
@@ -70,24 +73,27 @@ class Func:
             
     def __search_in_db(self, pattern):
         result = self.__db.search_by_name(pattern)
-        allJson = self.__conf.module.getAllJson()
-        count=0
-        for row in result:
-            mod_config = allJson[row[1]]
-            self.common.print_item_db(row, mod_config)
-            count+=1
-        self.__print_footer("cache", count, "")
+        self.__print_search_in_db(result, "cache")
         
     def __search_hash_in_db(self, hash):
-        print self.__color.green + "SEARCH HASH: " + hash.upper() + self.__color.base
         result = self.__db.search_by_hash(hash)
-        allJson = self.__conf.module.getAllJson()
+        self.__print_search_in_db(result, "hash")
+
+    def __search_hash_in_db_by_id(self, id):
+        item = self.common.get_item(id)
+        if item.hashvalue is None:
+            self.common.print_warning("item " + str(item.id) + " not have hashvalue")
+        else:
+            result = self.__db.search_by_hash(item.hashvalue)
+            self.__print_search_in_db(result, "hash")
+        
+    def __print_search_in_db(self, result, type):
         count=0
         for row in result:
-            mod_config = allJson[row[1]]
+            mod_config = self.__conf.module.getModJson(row[1])
             self.common.print_item_db(row, mod_config)
             count+=1
-        self.__print_footer("hash", count, "")
+        self.__print_footer(type, count, "")
 
     def getColors(self):
         return self.__color
@@ -111,7 +117,8 @@ class Func:
         print "bt-search \"words\"                          - normal search"
         print "bt-search \"words\" [cat]                    - normal search in specific category"
         print "bt-search \"words\" cache                    - search in local db"
-        print "bt-search \"words\" hash                     - search hash value in file cache"
+        print "bt-search \"hashvalue\" hash                 - search hash value in file cache"
+        print "bt-search \"id\" hashid                      - search hash value of item \"id\" in file cache"
         print
         print "use to download search result:"
         print "bt-download ID"

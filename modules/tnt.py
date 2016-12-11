@@ -88,8 +88,7 @@ class Data(module.Data):
         self.username = config['username']
         self.password = config['password']
         self.cookie = None
-        self.rss_light_download = config['rss_light_download'] 
-        self.num_rss_item = config['num_rss_item']
+        self.rss_conf = config['rss']
                                
     def _try_login(self):
         c=httplib2.Http()
@@ -306,7 +305,7 @@ class Data(module.Data):
     def getFeed(self, type):
         self.cat = type
         try:
-            uri= 'http://www.tntvillage.scambioetico.org/rss.php?c=' + self.cats[type] + "&p=" + str(self.num_rss_item)
+            uri= 'http://www.tntvillage.scambioetico.org/rss.php?c=' + self.cats[type] + "&p=" + str(self.rss_conf['num_item'])
             result=httplib2.Http()
             resp,content=result.request(uri, 'GET')
             self._get_rss(content)

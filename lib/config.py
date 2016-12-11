@@ -37,7 +37,7 @@ class Module:
         self.__debug = debug
         self.__json = None
         self.list = []
-        self.__allJson = {}
+        self.__ModJson = {}
         self.__getList()
 
     def __get_mod_dir(self):
@@ -59,27 +59,28 @@ class Module:
                         modname = f.replace('.py','')
                         if modname not in self.list:
                             self.list.append(modname)
+                            self.__ModJson[modname] = None
                             if self.__debug:
-                                print "DEBUG: found module - " + modname
+                                print "DEBUG: add to list module - " + modname
                         else:
                             print Color().red + "ERROR: two modules with name \"" +modname+ "\"" + Color().base
                         
     def loadConf(self, name):
         mod_config = self.__mod_config_dir + "/" + name + ".json"
         if self.__debug:
-            print "DEBUG: check is exist - " + mod_config
+            print "DEBUG: load config - " + mod_config
         if os.path.isfile(mod_config):
             with open(mod_config) as data_file:
-                self.__json = json.load(data_file)
-            if self.__json['enabled']:
+                self.__ModJson[name] = json.load(data_file)
+            if self.__ModJson[name]['enabled']:
                 return True
             else:
-                self.__json = None
+                self.__ModJson[name] = None
                 return False
         else:
             self.__build_conf(name)
             with open(mod_config) as data_file:
-                self.__json = json.load(data_file)
+                self.__ModJson[name] = json.load(data_file)
             return True
 
 
@@ -116,15 +117,12 @@ class Module:
             print "ERROR: " + os.path.join(modules_dir, f) + " not found"
             return None
 
-    def getJson(self):
-        return self.__json
-
-    def getAllJson(self):
-        for name in self.list:
-            if self.loadConf(name):
-                self.__allJson[name] = self.getJson()
-        return self.__allJson
-
+    def getModJson(self, name):
+        if self.__ModJson[name] is None:
+            for mod in self.list:
+                if mod == name:
+                    self.loadConf(name)
+        return self.__ModJson[name]
         
 class Data:
     def __init__(self):

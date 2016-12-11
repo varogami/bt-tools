@@ -35,20 +35,25 @@ class Func:
     def get_rss(self):
         for name in self.__conf.module.list:
             if self.__conf.module.loadConf(name):
-                module_config = self.__conf.module.getJson()
+                module_config = self.__conf.module.getModJson(name)                
                 #print module info
                 print self.__color.blu + name + " - " + module_config['url'] + self.__color.red
                 #check if exist catalog type on module
-                if cat in module_config['cats']:
+                if module_config['rss']['enabled']:
                     #load module
                     engine = self.__conf.load_mod(name, module_config)
-
-        for modname,cats in config.rss_daemon_list.items():
-        if modname in config.mods_enabled:
-            for cat in cats:
-                common.Func().getRss(cat, modname)
-                if config.rss_daemon_gen_rss:
-                    common.Func().makeRss(cat, modname)
+                    for cat in module_config['rss']['feeds'].iteritems():
+                        engine.getFeed(cat)
+                        self.__db.resetCountNewExtra()
+                        for i in engine.list:
+                            id = self.__db.insert(name, module_config['url'], i)
+                            url = ""
+                            id_extra = self.__db.insert_extra(id, "rss", url)
+                            self.common.print_item(id, i, module_config)
+                            ##TODO - rss filter
+                            ##TODO - rss filter download file torrent
+                        print self.__db.getCountNewExtra()
+                        ##TODO - generation local rss for site without rss
 
     def cli(self):
         if len(sys.argv) == 1:
@@ -59,8 +64,6 @@ class Func:
     def help(self):
         print "use:"
         print "bt-rss"
-
-
                         
 if __name__ == "__main__":
     do = Func()

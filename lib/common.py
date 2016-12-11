@@ -27,7 +27,6 @@ class Func:
         self.__json = config.getJson()
         self.__db = config.getDb()
         self.__debug = config.getDebug()
-        self.allJson = None
         
     def build_item(self, row):
         item = module.Item()
@@ -51,12 +50,6 @@ class Func:
         item.html = row[17]
         return item
     
-    def __isMode(self, value):
-        result = False
-        if value == "m1":
-            result = True
-        return result
-
     def print_item(self, id, i, mod_config):
         self.__print_item(id, i.name, self.getCategory(mod_config, i.type), i.leech, i.seed, i.compl, i.get_human_size())
 
@@ -65,8 +58,7 @@ class Func:
         cat = i.module + " | " + self.getCategory(mod_config, i.type)
         self.__print_item( str(i.id), i.name, cat, str(i.leech), str(i.seed), str(i.compl), i.get_human_size() )
 
-    def print_item_db_detail(self, row, config):
-        i = self.build_item(row)
+    def print_item_db_detail(self, i, config):
         cat = self.getCategory(config, i.type)
         print self.color.magenta + i.name + self.color.base
         self.__print_item_attribute("id", str(i.id))
@@ -96,9 +88,14 @@ class Func:
             self.__print_item_attribute("html", "present")
         
     def __print_item(self, id_item, name, category, leech, seed, completed, size):
+        limit = self.__json["output_string_limit"]
+        if len(name) > limit:
+            trunk_name = name[:limit] + "..."
+        else:
+            trunk_name = name
         print self.color.magenta + str(id_item) + " | " + category + \
-            self.color.base + " " + name + \
-            self.color.yellow  + "  " + "[l" + leech + " s" + seed + " c" + completed + "] " + size + self.color.base
+            self.color.base + " " + trunk_name + \
+            self.color.yellow  + "  " + "[l" + str(leech) + " s" + str(seed) + " c" + str(completed) + "] " + size + self.color.base
         
     def __print_item_attribute(self, name, value):
         print self.color.yellow + name + ": " + self.color.base + str(value)
@@ -141,29 +138,7 @@ class Func:
         for name, external_category in cats.iteritems():
             if external_category == category:
                 return name
-        
-    def __launch_client(self, url):
-        print self.color.cyan + "launching:"
-        limit = self.__json["output_string_limit"]
-        client = self.__json["torrent_client"] 
-        print  client + " " + url[:limit] + "..." + self.color.base
-        subprocess.call([client, url])
-        #fix a bug with qbittorrent
-        time.sleep(5)
-        print
-
-    def __download(self, result):
-        item = self.build_item(result)
-        if item.magnet is not None:
-            self.__launch_client(item.magnet)
-            return True
-        elif item.torrent_link is not None:
-            self.__launch_client(item.torrent_link)
-            return True
-        else:
-            return False
-            
-            
+                    
     def __get_item(self, id):
         try:
             val = int(id)
@@ -175,38 +150,63 @@ class Func:
             self.print_error("\"" + id + "\" not is number")
             return None
 
+    def __launch_client(self, url):
+        print self.color.cyan + "launching:"
+        limit = self.__json["output_string_limit"]
+        client = self.__json["torrent_client"] 
+        print  client + " " + url[:limit] + "..." + self.color.base
+        subprocess.call([client, url])
+        #fix a bug with qbittorrent
+        time.sleep(5)
+        print        
+        
+    def __download(self, item):
+        if item.magnet is not None:
+            self.__launch_client(item.magnet)
+            return True
+        elif item.torrent_link is not None:
+            self.__launch_client(item.torrent_link)
+            return True
+        else:
+            return False
+
+    def __isMode(self, value):
+        result = False
+        if value == "hash":
+            result = True
+        return result        
+        
     def download(self, id, mode):
         if self.__isMode(mode):
             if id != mode:
-                if mode == "m1":
-                    result = self.__get_item(id)
-                    if result is not None:
-                        self.allJson = self.__conf.module.getAllJson()
-                        self.print_item_db(result, self.allJson[result[1]])
-                        self.__download(result)
+                if mode == "hash":
+                    pass
         else:
-            result = self.__get_item(id)                    
-            if result is not None:
-                self.allJson = self.__conf.module.getAllJson()
-                self.print_item_db(result, self.allJson[result[1]])
-                self.__download(result)
+            item = self.get_item(id)                    
+            if item is not None:
+                mod_json = self.__conf.module.getModJson(item.module)
+                self.print_item(id, item, mod_json)
+                if not self.__download(item):
+                    up_result = self.update_item(id)
+                    self.__download(up_result)
+                    
                 
     def info(self, id):
-        result = self.__get_item(id)
-        if self.allJson is None:
-            self.allJson = self.__conf.module.getAllJson()
-        if result is not None:
-            self.print_item_db_detail(result, self.allJson[result[1]])
+        item = self.get_item(id)
+        mod_json = self.__conf.module.getModJson(item.module)
+        if item is not None:
+            self.print_item_db_detail(item, mod_json)
 
     def get_item(self, id):
         return self.build_item(self.__get_item(id))
 
     def update_item(self, id):
         i = self.get_item(id)
-        self.allJson = self.__conf.module.getAllJson()
-        engine = self.__conf.load_mod(i.module, self.allJson[i.module])
+        mod_json = self.__conf.module.getModJson(i.module)
+        engine = self.__conf.load_mod(i.module, mod_json)
         final_item = engine.get_detail_data(i)
         self.__db.update_item(final_item)
+        return final_item
     
     def getRss(self, cat, modname):
         engine = self.engines[modname]
