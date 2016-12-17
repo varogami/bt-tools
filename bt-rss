@@ -1,0 +1,71 @@
+#! /usr/bin/python
+# -*- coding=utf-8 -*-
+
+#bt-tools - tools to interact with some bittorrent sites by commandline
+#Copyright (C) 2015-2016 varogami <varogami@altervista.org>
+
+#This program is free software: you can redistribute it and/or modify
+#it under the terms of the GNU General Public License as published by
+#the Free Software Foundation, either version 3 of the License, or
+#(at your option) any later version.
+
+#This program is distributed in the hope that it will be useful,
+#but WITHOUT ANY WARRANTY; without even the implied warranty of
+#MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#GNU General Public License for more details.
+
+#You should have received a copy of the GNU General Public License
+#along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+
+from lib import config
+from lib import utils
+from lib import common
+import sys
+
+class Func:
+    def __init__(self):
+        self.__conf = config.Config()
+        self.__color = self.__conf.getColors()
+        self.__json = self.__conf.getJson()
+        self.__db = self.__conf.getDb()
+        self.__debug = self.__conf.getDebug()
+        self.common = common.Func(self.__conf)
+
+    def get_rss(self):
+        for name in self.__conf.module.list:
+            if self.__conf.module.loadConf(name):
+                module_config = self.__conf.module.getModJson(name)                
+                #print info
+                if module_config['rss']['enabled']:
+                    #load module
+                    engine = self.__conf.load_mod(name, module_config)
+                    for cat in module_config['rss']['feeds']:
+                        print self.__color.red
+                        url_feed = engine.getFeed(cat)
+                        print self.__color.blu + name + " - " + cat + " - feed " + url_feed + self.__color.red
+                        self.__db.resetCountNewExtra()
+                        for i in engine.list:
+                            id = self.__db.insert(name, module_config['url'], i)
+                            if self.__db.insert_extra(id, "rss", name):
+                                self.common.print_item(id, i, module_config)
+                            ##TODO - rss filter
+                            ##TODO - rss filter download file torrent
+                        engine.list = []
+                        self.common.print_footer(name, "feed", self.__db.getCountNewExtra()," new")
+                        print
+                        ##TODO - generation local rss for site without rss
+
+    def cli(self):
+        if len(sys.argv) == 1:
+            self.get_rss()
+        else:
+            self.help()
+
+    def help(self):
+        print "use:"
+        print "bt-rss"
+                        
+if __name__ == "__main__":
+    do = Func()
+    do.cli()

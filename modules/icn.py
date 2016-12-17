@@ -3,6 +3,7 @@ from BeautifulSoup import BeautifulSoup
 from datetime import datetime, date
 from lib import module
 from lib import utils
+import feedparser
 
 class Config(module.Config):
     def __init__(self):
@@ -19,26 +20,32 @@ class Config(module.Config):
             "movie_screener":"19",
             "anime":"5",
             "tv":"15",
-            "apps_linux":"8",
-            "apps_mac":"9",
-            "apps_win":"7",
+            "app_linux":"8",
+            "app_mac":"9",
+            "app_win":"7",
             "music":"2",
-            "books_audio":"18",
-            "games_pc":"3",
-            "games_playstation":"13",
-            "games_xbox":"14",
+            "book_audio":"18",
+            "game_pc":"3",
+            "game_psx":"13",
+            "game_xbox":"14",
             "hacking":"16",
             "other":"4",
-            "books":"6"
+            "book":"6"
         }
-
+        self.rss = {
+            "num_item" : 20,
+            "enabled" : False,
+            "feeds" : [
+                "movie", "tv"
+            ]
+        }
 
 class Item(module.Item):
     def _set_size(self, size):
         self.size = utils.getBytes(size) 
      
     def _set_id(self, link):
-        self.id = link.split("/")[4]
+        self.id_module = link.split("/")[4]
            
     def _set_date(self, string):
         if len(string) < 20:
@@ -55,8 +62,9 @@ class Data(module.Data):
     def __init__(self, name, config, log_dir, user_agent, debug = False):
         module.Data.__init__(self,name,config,log_dir,user_agent,debug)
         self.adv = config['advanced_search']
-        self.rss_light_download = config['rss_light_download']
-                
+        self.rss_conf = config['rss']
+        self.__mod_conf = config
+        
     def _run_search(self,pattern,cat):
         result=httplib2.Http()
         if cat == "all":
@@ -153,40 +161,12 @@ class Data(module.Data):
         else:
             newitem.compl = newitem.nodata
 
-            
-
         self.list.append(newitem)
 
-    def _get_rss(self,type):
-        import feedparser
-        uri=self.url+'/rsscat.php?cat='+self.cats[type]
-        result=httplib2.Http()
-        resp,content=result.request(uri, 'GET')
-        parsedRss = feedparser.parse(content)        
-        tmplist = []
-        for i in parsedRss.entries:
-            name = i['title']
-            link = i['link']
-            newitem = Item(name,'01.01.01',link,'0 byte')
-            tmplist.append(newitem)
-        return tmplist
-
-    def _build_new_rss(self, rssdata):
-        for rssitem in rssdata:
-            count=0
-            webitem = self.list[count]
-            #find element from data get by website
-            while webitem.id != rssitem.id:
-                count = count+1
-                webitem = self.list[count]
-            #if element found set variables
-            if webitem.id == rssitem.id:
-                webitem.name = rssitem.name
                     
-    def __get_detail_data(self, link):
+    def __get_detail_data(self, item):
         result=httplib2.Http()
-        item_obj = Item()
-        resp,content=result.request(link, 'GET')
+        resp,content=result.request(item.link, 'GET')
         #parsedDetails = BeautifulSoup( content.decode("utf-8") ,convertEntities = BeautifulSoup.HTML_ENTITIES )
         parsedDetails = BeautifulSoup( content ,convertEntities = BeautifulSoup.HTML_ENTITIES )
 
@@ -194,9 +174,9 @@ class Data(module.Data):
         magnet_raw = parsedDetails.find('a',{'class':'forbtn','target':'_blank'})
         if magnet_raw == None:
             magnet_raw = parsedDetails.find('a',{'class':'forbtn magnet','target':'_blank'})
-        magnet = magnet_raw.get('href')
-        name_m = magnet.split("&tr=")[0].split("&dn=")[1]
-        name = urllib.unquote_plus(name_m)
+        item.magnet = magnet_raw.get('href')
+        name_m = item.magnet.split("&tr=")[0].split("&dn=")[1]
+        item.name = urllib.unquote_plus(name_m)
         
         ## another way to get name 
         #name = parsedDetails.find('title').getText().encode("iso-8859-1")
@@ -215,33 +195,25 @@ class Data(module.Data):
         else:
             description = None
          
-        item_obj.magnet = magnet
-        item_obj.name = name
-        item_obj.leech = tdodd2[3].findAll('font')[1].getText()
-        item_obj.seed = tdodd2[3].findAll('font')[0].getText()
-        item_obj.compl = tdodd2[4].findAll('td')[1].getText().replace("x","")
-        item_obj.date = item_obj._set_date(tdodd[1].findAll('td')[1].getText())
-        #item_obj.descr = description
-
-        if self.debug:
-            print item_obj.magnet
-            print item_obj.name 
-            print item_obj.leech 
-            print item_obj.seed 
-            print item_obj.compl
-            print item_obj.date 
+        item.leech = tdodd2[3].findAll('font')[1].getText()
+        item.seed = tdodd2[3].findAll('font')[0].getText()
+        item.compl = tdodd2[4].findAll('td')[1].getText().replace("x","")
+        tmp_item = Item()
+        tmp_item._set_date(tdodd[1].findAll('td')[1].getText())
+        item.date = tmp_item.date
+        #item.descr = description
  
-        return item_obj
+        return item
     
-    def get_detail_data(self, item_obj):
+    def get_detail_data(self, item):
         if self.debug:
-            self.__get_detail_data(item_obj)
+            return self.__get_detail_data(item)
         else:
             try:
-                self.__get_detail_data(item_obj)
+                return self.__get_detail_data(item)
             except Exception, e:
                 print self.shortname + " error:  " + str(e)
-
+                return None
         
     def __search(self, pattern, type):
         if self.adv:
@@ -260,9 +232,8 @@ class Data(module.Data):
                 print self.shortname + " error:  " + str(e)
                 return False
             
-    def getLastTypePage(self, type):
+    def _get_rss_fake(self, type):
         '''build data object of single category (only 1 page)'''
-        self.cat=type
         uri=self.url+"/cat/"+self.cats[type]
         result=httplib2.Http()
         resp,content=result.request(uri, 'GET')
@@ -270,20 +241,35 @@ class Data(module.Data):
         #self._get_data(content.decode("utf-8"))
         self._get_data(content)
 
+    def _get_rss(self,type):
+        uri=self.url+'/rsscat.php?cat='+self.cats[type]
+        result=httplib2.Http()
+        resp,content=result.request(uri, 'GET')
+        parsedRss = feedparser.parse(content)
+
+        if self.debug:
+            now = datetime.now().strftime("%Y%m%d_%H%M%S")
+            self.logfile = self.log_dir+"/"+self.shortname+"-rss-"+type+"-"+now+".xml"
+            logfile = open(self.logfile, "w")
+            logfile.write(content)
+            logfile.close()
+
+        for i in parsedRss.entries:
+            newitem = Item()
+            newitem.name = i['title']
+            newitem.link = i['link']
+            newitem._set_id(newitem.link)
+            newitem.size = 0
+            newitem.compl = newitem.nodata
+            newitem.seed = newitem.nodata
+            newitem.leech = newitem.nodata
+            newitem.type = self.cats[type]
+            
+            self.list.append(newitem)
+        return uri
+    
     def getFeed(self, type):
         #try:
-            if self.rss_light_download:
-                #build data object by downloading rss feed
-                feedlist = self._get_rss(type)
-        
-                #download web page of specific category and build data object (self.list)
-                self.getCategory(type)
-
-                #build new rss
-                self._build_new_rss(feedlist)
-            else:
-                #download web page of specific category and build data object (self.list)
-                self.getCategory(type)
-
+            return self._get_rss(type)
         #except Exception, e:
         #    print self.shortname +" error:  " + str(e)

@@ -11,49 +11,59 @@ class Config(module.Config):
         self.name="tnt village"
         self.username = "INSERT USERNAME"
         self.password = "INSERT PASSWORD"
-        self.rss_light_download = True
-        self.num_rss_item = 20
         self.default_cat = 'all'
         self.cats = {
             "all":"0",
-            "programmi_tv":"1",
+            "tv_misc":"1",
             "music":"2",
-            "books":"3",
+            "book":"3",
             "movie":"4",
-            "apps_linux":"6",
+            "app_linux":"6",
             "anime":"7",
-            "cartoons":"8",
-            "apps_mac":"9",
-            "apps_win":"10",
-            "games_pc":"11",
-            "games_playstation_2":"12",
-            "apps_students_release":"13",
-            "movie_documentary":"14",
+            "cartoon":"8",
+            "app_mac":"9",
+            "app_win":"10",
+            "game_pc":"11",
+            "game_psx2":"12",
+            "app_student":"13",
+            "movie_doc":"14",
             "movie_music":"21",
             "sport":"22",
             "movie_theater":"23",
             "wrestling":"24",
             "other":"25",
-            "games_xbox":"26",
-            "immagini_sfondi":"27",
-            "games_other":"28",
+            "game_xbox":"26",
+            "image_wall":"27",
+            "game_other":"28",
             "tv":"29",
-            "comics":"30",
+            "comic":"30",
             "trash":"31",
-            "games_playstation_1":"32",
-            "games_psp_portable":"33",
-            "books_audio":"34",
+            "game_psx1":"32",
+            "game_psp":"33",
+            "book_audio":"34",
             "podcast":"35",
-            "books_edicola":"36",
-            "apps_mobile":"37"    
+            "book_edicola":"36",
+            "app_mobile":"37"    
+        }
+        self.rss = {
+            "url" : "http://www.tntvillage.scambioetico.org/rss.php?c=",
+            "num_item" : "20",
+            "enabled" : False,
+            "feeds" : [
+                "movie", "tv"
+            ]
         }
 
 class Item(module.Item):
     def _set_size(self,size):
-        self.size = utils.getBytes(size+" GB")
+        self.size = utils.getBytes(size+" GB"
+        )
+    def _set_size_rss(self, size):
+        fixed_size = size.replace(",","")
+        self.size = utils.getBytes(fixed_size)
         
     def _set_id(self, link):
-        self.id = link.split("=")[1]
+        self.id_module = link.split("=")[1]
         
     def _set_date(self, date):
         months = { "Jan":1, "Feb":2, "Mar":3, "Apr":4, "May":5, "Jun":6, "Jul":7, "Aug":8, "Sep":9, "Oct":10, "Nov":11, "Dec":12 }
@@ -83,8 +93,8 @@ class Data(module.Data):
         self.username = config['username']
         self.password = config['password']
         self.cookie = None
-        self.rss_light_download = config['rss_light_download'] 
-        self.num_rss_item = config['num_rss_item']
+        self.rss_conf = config['rss']
+        self.__mod_conf = config
                                
     def _try_login(self):
         c=httplib2.Http()
@@ -191,19 +201,34 @@ class Data(module.Data):
             
             if cat == '0':
                 img_cat = i.find('img')
-                cat = img_cat.get('src').split('/')[2].split('.')[0].replace("icon","")
+                newitem.type = img_cat.get('src').split('/')[2].split('.')[0].replace("icon","")
+            else:
+                newitem.type = cat
                 
-            newitem.type = cat
-            
             self.list.append(newitem)
         return parsedHtml
 
-    def get_detail_data(self, link):
+    def search(self, pattern, type):
+        if self.username == "INSERT USERNAME":
+            print "tnt error: username and password not configured"
+            return False
+        else:
+            if self.debug:
+                print "DEBUG: search \"" + pattern + "\" in category \"" + type + "\""
+            self._try_login()
+            if self.cookie is not None:
+                result = self._run_search(pattern,self.cats[type])
+                self._logout()
+                return result
+            else:
+                print self.shortname + " error:  none cookie - no login"
+                return False
+
+    def get_detail_data(self, item):
         detail=httplib2.Http()
-        item = Item()
         
         try:
-            resp,content=detail.request(link, 'GET')
+            resp,content=detail.request(item.link, 'GET')
             parsedDetail = BeautifulSoup(content,convertEntities=BeautifulSoup.HTML_ENTITIES)
             
             #check if link work without login
@@ -223,7 +248,9 @@ class Data(module.Data):
             #GET DATA
             item.torrent_link = torrent_link.get('href')
             date = parsedDetail.find('span', {'class':'postdetails'}).getText().replace("Inviato il:","")
-            item._set_date(date)
+            tmp_item = Item()
+            tmp_item._set_date(date)
+            item.date = tmp_item.date
             
             #Details table
             details_table_src = torrent_link.findParent().findParent().findParent()
@@ -250,10 +277,6 @@ class Data(module.Data):
 
             if self.debug:
                 print "DEBUG: detail data - id " + str(item.id)
-                print link
-                print item.hashvalue
-                print item.torrent_link
-                print item.date
                 #now = datetime.now().strftime("%Y%m%d_%H%M%S")
                 #self.logfile = self.log_dir+"/"+self.shortname+"-get_detail_data-"+str(item.id)+"-"+now+".html"
                 #logfile = open(self.logfile, "w")
@@ -264,7 +287,7 @@ class Data(module.Data):
             print self.shortname + " error:  " + str(e)
             return None
 
-    def _get_rss(self, code):
+    def _get_rss(self, code, type):
         parsedRss = feedparser.parse(code)
     
         for i in parsedRss.entries:
@@ -274,40 +297,43 @@ class Data(module.Data):
             rssdesc = i['description'].split("Desc:")[1]
             itemsDesc = BeautifulSoup(rssdesc,convertEntities=BeautifulSoup.HTML_ENTITIES).findAll('b')
             #desc = itemsDesc[0].text
-            newitem.descr = ""
-            newitem.size = itemsDesc[3].text
+            #newitem.name = name + " " + descr            
+            size = itemsDesc[3].text
             newitem.seed = itemsDesc[1].text
             newitem.leech = itemsDesc[2].text
-            newitem.compl = "x" #prendere dalla descrizione
+            newitem.compl = newitem.nodata
             newitem.date = i['published']
             newitem.torrent_link = i.enclosures[0]['href']
-
+            newitem._set_id(newitem.link)
+            newitem._set_size_rss(size)
+            newitem.type = type
+                        
             self.list.append(newitem)
 
-    def search(self, pattern, type):
-        if self.username == "INSERT USERNAME":
-            print "tnt error: username and password not configured"
-            return False
-        else:
-            if self.debug:
-                print "DEBUG: search \"" + pattern + "\" in category \"" + type + "\""
-            self._try_login()
-            if self.cookie is not None:
-                result = self._run_search(pattern,self.cats[type])
-                self._logout()
-                return result
-            else:
-                print self.shortname + " error:  none cookie - no login"
-                return False
+
+    def __get_feed(self,type):
+        uri= self.rss_conf['url'] + str(self.__mod_conf["cats"][type]) + "&p=" + str(self.rss_conf['num_item'])
+        result=httplib2.Http()
+        resp,content=result.request(uri, 'GET')
+
+        if self.debug:
+            now = datetime.now().strftime("%Y%m%d_%H%M%S")
+            self.logfile = self.log_dir+"/"+self.shortname+"-rss-"+type+"-"+now+".xml"
+            logfile = open(self.logfile, "w")
+            logfile.write(content)
+            logfile.close()
+
+        self._get_rss(content, self.__mod_conf["cats"][type])
+        return uri
 
     def getFeed(self, type):
-        self.cat = type
-        try:
-            uri= 'http://www.tntvillage.scambioetico.org/rss.php?c=' + self.cats[type] + "&p=" + str(self.num_rss_item)
-            result=httplib2.Http()
-            resp,content=result.request(uri, 'GET')
-            self._get_rss(content)
-        except Exception, e:
-            print self.shortname + " error:  " + str(e)
+        if self.debug:
+            return self.__get_feed(type)
+        else:
+            try:
+                return self.__get_feed(type)
+            except Exception, e:
+                print self.shortname + " error:  " + str(e)
+                return ""
             
 
