@@ -57,10 +57,11 @@ class Func:
                         ##TODO - generation local rss for site without rss
 
     def cli(self):
-        if len(sys.argv) == 1:
-            self.get_rss()
-        else:
-            self.help()
+        if self.__conf.checkVersion():
+            if len(sys.argv) == 1:
+                self.get_rss()
+            else:
+                self.help()
 
     def help(self):
         print "use:"

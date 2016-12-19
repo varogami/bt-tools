@@ -36,10 +36,11 @@ class Func:
                 self.common.download(id, args[1])
 
     def cli(self):
-        if len(sys.argv) == 1:
-            self.help()
-        else:
-            self.iterative_download(sys.argv)
+        if self.__conf.checkVersion():
+            if len(sys.argv) == 1:
+                self.help()
+            else:
+                self.iterative_download(sys.argv)
 
     def help(self):
         print "use:"

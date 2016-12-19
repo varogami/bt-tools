@@ -69,7 +69,7 @@ class Func:
                     else:
                         print self.__color.red + name + " search error: something not work" + self.__color.base 
                 else:
-                    print "\"" + cat + "\" category not in " + name    
+                    self.common.print_warning("warning: \"" + cat + "\" category not in " + name)
             
     def __search_in_db(self, pattern):
         result = self.__db.search_by_name(pattern)
@@ -94,22 +94,17 @@ class Func:
             self.common.print_item_db(row, mod_config)
             count+=1
         self.common.print_footer(type, "search", count, "")
-
-    def getColors(self):
-        return self.__color
-            
         
     def cli(self):
-        self.color = self.__color
-        
-        if len(sys.argv) == 1:
-            self.help()
-        elif len(sys.argv) == 2:
-            self.search(sys.argv[1])
-        elif len(sys.argv) == 3:
-            self.search(sys.argv[1],sys.argv[2])
-        else:
-            self.common.print_error("too much parameter")
+        if self.__conf.checkVersion():
+            if len(sys.argv) == 1:
+                self.help()
+            elif len(sys.argv) == 2:
+                self.search(sys.argv[1])
+            elif len(sys.argv) == 3:
+                self.search(sys.argv[1],sys.argv[2])
+            else:
+                self.common.print_error("too much parameter")
 
     def help(self):
         print "bt-search \"words\"                          - normal search"
@@ -123,7 +118,7 @@ class Func:
         print "    example: bt-download 1234"
         print
         print "CATEGORY LIST and SUPPORTED MODULES"
-        print "cache: " + self.color.blu + "local search" + self.color.base
+        print "cache: " + self.__color.blu + "local search" + self.__color.base
         self.common.lscat()
 
         

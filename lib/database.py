@@ -5,11 +5,21 @@ class Data:
         self.__debug = debug
         self.__file = filepath
         self.__version = "0.0.1"
+        self.__db_version = None
         self.__new_item = 0
         self.__new_item_extra = 0
 
-    def check_version(self):
-        return True
+    def checkVersion(self):
+        self.__con = sqlite3.connect(self.__file)
+        cur = self.__con.cursor()
+        cur.execute('''SELECT value FROM config WHERE name == ?''', ('version',))
+        db_version=cur.fetchone()
+        self.__db_version = db_version[0]
+        if self.__version == self.__db_version: 
+            return True
+        else:
+            print "error: db version is " + self.__db_version + " - required " + self.__version
+            return False
     
     def makeDb(self):
         print "+create database"
