@@ -109,7 +109,7 @@ class Func:
 
 
     def import_qbt_filters(self):
-        do = qbt.Func(True)
+        do = qbt.Func(self.__conf.getFilterDir(), self.__debug)
         do.write_rules()
 
     def cli(self):
@@ -118,7 +118,7 @@ class Func:
         elif len(sys.argv) == 2:
             if sys.argv[1] == "export":
                 pass
-            elif sys.argv[1] == "import_qfilter ":
+            elif sys.argv[1] == "import_qbfilter":
                 self.import_qbt_filters()
             elif sys.argv[1] == "lsmod":
                 self.lsmod()
@@ -141,12 +141,12 @@ class Func:
         print "bt-utils help                         - print this help"
         print "bt-utils lsmod                        - list modules info"
         print "bt-utils lscat                        - list categories info"
-        print "bt-utils import_qfilter               - import qbittorrent filter to use with own generated rss"
-        print "bt-utils export /path/filename.json   - export db to json"
+        print "bt-utils import_qbfilter              - import qbittorrent filters"
+        print "bt-utils export                       - export db to json"
         print "bt-utils stats"
         print
         print "TODO"
-        print "bt-utils delitem SHORTNAME-ID         - delete specific item on database"
+        print "bt-utils delitem ID                   - delete specific item on database"
         print "bt-utils import                       - import db from json"
 
 if __name__ == "__main__":

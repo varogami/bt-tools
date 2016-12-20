@@ -161,11 +161,11 @@ class Config:
         self.__dir = os.environ['HOME'] + "/.config/bt-tools"
         self.__dir_mod =  self.__dir + "/modules"
         self.__dir_log =  self.__dir + "/log"
+        self.__dir_filter =  self.__dir + "/filters"
         self.__mod_conf =  self.__dir + "/modules_conf"       
         self.__file_conf = self.__dir + "/config.json"
         self.__file_db = self.__dir + "/database.sqlite"
         self.__db = None
-
         
         if not os.path.exists(self.__dir):
             print "+create " + self.__dir
@@ -182,6 +182,10 @@ class Config:
         if not os.path.exists(self.__mod_conf):
             print "+create " + self.__mod_conf
             os.mkdir(self.__mod_conf)
+
+        if not os.path.exists(self.__dir_filter):
+            print "+create " + self.__dir_filter
+            os.mkdir(self.__dir_filter)
             
         if not os.path.exists(self.__file_conf):
             print "+build config file "
@@ -218,6 +222,9 @@ class Config:
 
     def getDebug(self):
         return self.__debug
+
+    def getFilterDir(self):
+        return self.__dir_filter
     
     def load_mod(self, name, config):
         #load modules config from "modules" dir
