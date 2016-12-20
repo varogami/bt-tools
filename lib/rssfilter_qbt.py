@@ -2,7 +2,7 @@
 # -*- coding=utf-8 -*-
 
 #bt-tools - tools to interact with some bittorrent sites by commandline
-#Copyright (C) 2015 varogami <varogami@autistici.org>
+#Copyright (C) 2015-2016 varogami <varogami@altervista.org>
 
 #This program is free software: you can redistribute it and/or modify
 #it under the terms of the GNU General Public License as published by
