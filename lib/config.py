@@ -164,6 +164,7 @@ class Config:
         self.__mod_conf =  self.__dir + "/modules_conf"       
         self.__file_conf = self.__dir + "/config.json"
         self.__file_db = self.__dir + "/database.sqlite"
+        self.__db = None
 
         
         if not os.path.exists(self.__dir):
@@ -236,3 +237,20 @@ class Config:
 
     def getDb(self):
         return self.__db
+
+    def checkVersion(self):
+        if self.__db is not None:
+            if self.__db.checkVersion():
+                if self.__json['conf_version'] != Data().conf_version:
+                    print "error: config version is " + self.__json['conf_version'] + " - required " + Data().conf_version
+                    return False
+                else:
+                    return True
+            else:
+                if self.__json['conf_version'] != Data().conf_version:
+                    print "error: config version is " + self.__json['conf_version'] + " - required " + Data().conf_version
+                return False
+        else:
+            print "error: db object is None"
+            return False
+        

@@ -51,12 +51,18 @@ class Func:
         return item
     
     def print_item(self, id, i, mod_config):
-        self.__print_item(id, i.name, self.getCategory(mod_config, i.type), i.leech, i.seed, i.compl, i.get_human_size())
+        try:
+            self.__print_item(id, i.name, self.getCategory(mod_config, i.type), i.leech, i.seed, i.compl, i.get_human_size())
+        except Exception, e:
+            self.print_error("error on item "+str(id)+": " + str(e))
 
     def print_item_db(self, row, mod_config):
-        i = self.build_item(row)
-        cat = i.module + " | " + self.getCategory(mod_config, i.type)
-        self.__print_item( str(i.id), i.name, cat, str(i.leech), str(i.seed), str(i.compl), i.get_human_size() )
+        try:
+            i = self.build_item(row)
+            cat = i.module + " | " + self.getCategory(mod_config, i.type)
+            self.__print_item( str(i.id), i.name, cat, str(i.leech), str(i.seed), str(i.compl), i.get_human_size() )
+        except Exception, e:
+            self.print_error("error on item "+str(i.id)+": " + str(e))
 
     def print_item_db_detail(self, i, config):
         cat = self.getCategory(config, i.type)
@@ -116,7 +122,7 @@ class Func:
         #build list
         for name in self.__conf.module.list:
             if self.__conf.module.loadConf(name):
-                module_config = self.__conf.module.getJson()
+                module_config = self.__conf.module.getModJson(name)
                 for key, value in module_config['cats'].iteritems():
                     if key in listcat:
                         oldkey = listcat[key]

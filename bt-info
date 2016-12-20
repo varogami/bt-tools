@@ -52,20 +52,21 @@ class Func:
         print config.color_blu + string1 + config.color_base + string2 
 
     def cli(self):
-        if len(sys.argv) == 1:
-            self.help()
-        elif len(sys.argv) == 2:
-            self.info(sys.argv[1])
-        elif len(sys.argv) == 3:
-            if sys.argv[2] == "web":
-                self.webpage(sys.argv[1])
-            elif sys.argv[2] == "up":
-                self.update_info(sys.argv[1])
+        if self.__conf.checkVersion():
+            if len(sys.argv) == 1:
+                self.help()
+            elif len(sys.argv) == 2:
+                self.info(sys.argv[1])
+            elif len(sys.argv) == 3:
+                if sys.argv[2] == "web":
+                    self.webpage(sys.argv[1])
+                elif sys.argv[2] == "up":
+                    self.update_info(sys.argv[1])
+                else:
+                    common.Func().print_error( sys.argv[2] + " is bad parameter" )
             else:
-                common.Func().print_error( sys.argv[2] + " is bad parameter" )
-        else:
-            common.Func().print_error("too much parameters")
-            self.help()                
+                common.Func().print_error("too much parameters")
+                self.help()                
         
     def help(self):
         print "use:"
