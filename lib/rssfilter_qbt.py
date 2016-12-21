@@ -17,16 +17,37 @@
 #You should have received a copy of the GNU General Public License
 #along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from PyQt4.QtCore import QVariant, QSettings, QString
+from PyQt4.QtCore import QVariant, QSettings, QString, QFile, QDataStream
 import json
 
 class Func:
-    def __init__(self, path, debug = False ):
+    def __init__(self, path, debug=False):
         self.debug = debug
         self.path = path
+        
+    def _loadRulesByExport(self, e_file):
+        qfile = QFile(e_file)
+        if qfile.open(QIODevice.ReadOnly):
+            inp = QDataStream(qfile)
+            inp.setVersion(QDataStream.Qt_4_5)
+            tmp = inp.readQVariantHash()
+            #tmp = QVariant(inp)
+            rules = self._loadRulesFromVariantHash(tmp) 
+            qfile.close()
+            #if (tmp.isEmpty())
+            #return false;
+            #qDebug("Processing was successful!");
+            return rules
+        else:
+            print "error: file " + file + "not open"
+            return None
     
-    def write_rules( self ):
-        rules = self._loadRules()
+    def write_rules(self, exp_file = None):
+        if exp_file is None:
+            rules = self._loadRules()
+        else:
+            rules = self._loadRulesByExport(file)
+            
         file_list = {}
         if self.debug:
             print "+build qbitorrent filters list"
