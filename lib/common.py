@@ -219,25 +219,4 @@ class Func:
         else:
             self.__db.update_item(final_item)
         return final_item
-    
-    def getRss(self, cat, modname):
-        engine = self.engines[modname]
-        engine.getFeed(cat)
-        self.data.insert(engine, "rss", True, not engine.rss_light_download )
-        if config.rss_daemon_download_filtered:
-            items_to_download = self.data.filter(engine, cat, True)
-            if not items_to_download == None:
-                for item in items_to_download:
-                    if not config.filter_download_file_only:
-                        self.download(engine.shortname + "-" + item.id) #not efficent way - but less code
-                    else:
-                        file_got = engine.get_torrent_file(item, config.download_dir)
-                        self.data.add_item_to_filter_coda(item)
-                        #if not file_got: # check if downloaded torrent successful
-                        #    self.data.add_item_to_filter_coda(item)
-
-
-    def makeRss(self, cat, modname):
-        self.data.exportRssByXml(self.engines[modname], cat)
-
  

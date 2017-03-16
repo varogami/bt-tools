@@ -2,7 +2,7 @@
 # -*- coding=utf-8 -*-
 
 #bt-tools - tools to interact with some bittorrent sites by commandline
-#Copyright (C) 2015 varogami <varogami@autistici.org>
+#Copyright (C) 2015-2016 varogami <varogami@altervista.org>
 
 #This program is free software: you can redistribute it and/or modify
 #it under the terms of the GNU General Public License as published by
@@ -17,68 +17,52 @@
 #You should have received a copy of the GNU General Public License
 #along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import sys
-from modules import utils
-from lib import xml
 from lib import config
+from lib import utils
 from lib import common
 from lib import rssfilter_qbt as qbt
+import sys, os
+
+
 
 class Func:
     def __init__(self):
-        self.data = xml.Data()
-        self.engines = config.engines
+        self.__conf = config.Config()
+        self.__color = self.__conf.getColors()
+        self.__json = self.__conf.getJson()
+        self.__db = self.__conf.getDb()
+        self.__debug = self.__conf.getDebug()
+        self.common = common.Func(self.__conf)
         
-    def listdb(self):
-        self.data.load()
-        NUM_ITEMS=len(self.data.root)
-        print config.color_green + "[ numbers of website: " + str(NUM_ITEMS) + " ]"
+
+    def lscat(self):
+        print "CATEGORY LIST and SUPPORTED MODULES"
+        print "cache: " + self.__color.blu + "local search" + self.__color.base
+        self.common.lscat()
         
-        for i in self.data.root:
-            shortname = i.attrib['shortname'].encode('utf8')
-            name = i.attrib['name'].encode('utf8')
-            url = i.attrib['url'].encode('utf8')
-            
-            print config.color_blu + "[ " + name + " ]" + config.color_base
-            print config.color_blu + shortname + " - " + url + config.color_base
-            
-            COUNT=0
-
-            for z in i:
-                COUNT=COUNT+1
-                name = z.find("./key[@name]").text.encode('utf8')
-                id = z.attrib['id'].encode('utf8')
-                src = z.attrib['src'].encode('utf8')
-                type = z.attrib['type'].encode('utf8')
-                
-                print config.color_magenta + id  + config.color_yellow + " [" + src + "/"+  type + "] " + config.color_base +  name
-                
-            print config.color_green + "[ numbers of " + shortname +  " items: " + str(COUNT) + " ]" + config.color_base
-            print
-
     def stats(self):
-        self.data.load()
-        NUM_ITEMS=len(self.data.root)
-        print config.color_green + "[ numbers of website: " + str(NUM_ITEMS) + " ]"
+        NUM_ITEMS=len(self.__conf.module.list)
+        print self.__color.green + "[ number of modules: " + str(NUM_ITEMS) + " ]" + self.__color.base
 
-        #TODO: count with xml functions
-        for i in self.data.root:
-            shortname = i.attrib['shortname'].encode('utf8')
-            name = i.attrib['name'].encode('utf8')
-            url = i.attrib['url'].encode('utf8')
+        for module in self.__conf.module.list:
+            result = self.__db.search_by_mod(module)
             
-            print config.color_magenta + "[ " + name + " ]" + config.color_base
-            print config.color_magenta + shortname + " - " + url + config.color_base
+            self.__conf.module.loadConf(module)
+            module_config = self.__conf.module.getModJson(module)
+            url = module_config['url']
+            
+            print self.__color.magenta + module + " - " + url + self.__color.base
             
             COUNT=0
             list_src = {}
             list_type = {}
 
-            for z in i:
+            for row in result:
+                i = self.common.build_item(row)
                 COUNT=COUNT+1
-                name = z.find("./key[@name]").text.encode('utf8')
-                src = z.attrib['src'].encode('utf8')
-                type = z.attrib['type'].encode('utf8')
+                name = i.name
+                src = "TODO"
+                type = i.type
                 
                 if src in list_src:
                     SC = list_src[src]
@@ -95,131 +79,89 @@ class Func:
                     list_type[type] = 1
 
                     
-            print config.color_yellow + "items: " + config.color_base + str(COUNT) 
-            print config.color_yellow + "source:" + config.color_base
+            print self.__color.yellow + "total items: " + self.__color.base + str(COUNT) 
+            print self.__color.yellow + "items by source:" + self.__color.base
             for key, value in list_src.items():
-                print "  " + config.color_blu + str(key) + " " + config.color_base + str(value)
-            print config.color_yellow + "type:" + config.color_base
+                print "  " + self.__color.blu + str(key) + " " + self.__color.base + str(value)
+            print self.__color.yellow + "items by type:" + self.__color.base
             for key, value in list_type.items():
-                print "  " + config.color_blu + str(key) + " " + config.color_base + str(value)
+                print "  " + self.__color.blu + self.common.getCategory(module_config, key) + " " + self.__color.base + str(value)
             print
         
     def lsmod(self):
-        print "HELP:"
-        print "pymod = python modules name to use in config.py with mods_enabled, rss_daemon_list and conky_list"
-        print "name  = website name"
-        print "sname = website shortname to use with bt-info and bt-download"
-        print
-
-        for modname, engine in self.engines.items():
+        for module in self.__conf.module.list:
+            self.__conf.module.loadConf(module)
+            module_config = self.__conf.module.getModJson(module)
             keylist = []
-            for key in engine.cats.keys():
+
+            for key, value in module_config['cats'].iteritems():
                 keylist.append(key)
             keylist.sort()
             keystring = ""
             for key in keylist:
                     keystring = keystring + " " + key
                     
-            print "pymod:   " + config.color_blu + modname + config.color_base
-            print "name:    " + config.color_blu + engine.name + config.color_base
-            print "sname:   " + config.color_blu + engine.shortname + config.color_base
-            print "url:     " + config.color_blu + engine.url + config.color_base
-            print "cats:   " + config.color_blu +  keystring + config.color_base
+            print "name:    " + self.__color.blu + module + self.__color.base
+            print "url:     " + self.__color.blu + module_config['url'] + self.__color.base
+            print "cats:   " + self.__color.blu +  keystring + self.__color.base
             print
 
-    def rssls(self, cat):
-        self.data.load()
-        for i in self.data.root:
-            shortname = i.attrib['shortname'].encode('utf8')
-            name = i.attrib['name'].encode('utf8')
-            url = i.attrib['url'].encode('utf8')
-            rsslist = i.xpath("./item[@src='rss'][@type='"+cat+"']")
-            
-            print config.color_blu + "[ " + name + " ]" + config.color_base
-            print config.color_blu + shortname + " - " + url + config.color_base
-            print config.color_green + "[ items in rss: " + str(len(rsslist)) + "; showed last: " + str(config.rssLimit) + " ] " + config.color_base
-            
-            if len(rsslist) > config.rssLimit:
-                limit = config.rssLimit
+
+    def import_qbt_filters(self, filename = None):
+        if filename is None:
+            do = qbt.Func(self.__conf.getFilterDir(), self.__debug)
+            do.write_rules()
+        else:
+            if os.path.isfile(filename):
+                print "+read qbittorrent filter file " + filename
+                do = qbt.Func(self.__conf.getFilterDir(), self.__debug)
+                do.write_rules(filename)
             else:
-                limit = len(rsslist)-1
+                self.common.print_error(filename + " not exist")
 
-            count=len(rsslist)-1
-            while count >= len(rsslist)-limit:
-                z = rsslist[count]
-                count = count -1
-
-                name = z.find("./key[@name]").text.encode('utf8')
-                
-                id = z.attrib['id'].encode('utf8')
-                type = z.attrib['type'].encode('utf8')
-                
-                print config.color_magenta + id  + config.color_yellow + " [" + type + "] " + config.color_base +  name
-            print
-    def write_qbt_filters(self):
-        do = qbt.Func(True)
-        do.write_rules()
-
-            
-class CLI:
-    def __init__(self):
+    def cli(self):
         if len(sys.argv) == 1:
             self.help()
         elif len(sys.argv) == 2:
-            if sys.argv[1] == "lsdb":
-                Func().listdb()
-            elif sys.argv[1] == "export":
-                print config.color_blu + "load:                    " + config.color_base +config.dbfile
-                Func().data.load()
-                print config.color_blu + "export in pretty xml to: " + config.color_base + config.export_file
-                Func().data.export()
-            elif sys.argv[1] == "write-qf":
-                Func().write_qbt_filters()
+            if sys.argv[1] == "export":
+                pass
+            elif sys.argv[1] == "import_qbfilter":
+                self.import_qbt_filters()
             elif sys.argv[1] == "lsmod":
-                Func().lsmod()
+                self.lsmod()
             elif sys.argv[1] == "help":
                 self.help()
-            elif sys.argv[1] == "mergedb":
-                pass
             elif sys.argv[1] == "stats":
-                Func().stats()
+                self.stats()
             elif sys.argv[1] == "lscat":
-                common.Func().lscat()
+                self.lscat()
+            elif sys.argv[1] == "delitem":
+                pass
+            elif sys.argv[1] == "import":
+                pass
             else:
-                common.Func().print_error("bad parameter: " + sys.argv[1])
+                self.common.print_error("bad parameter: " + sys.argv[1])
         elif len(sys.argv) == 3:
-            if sys.argv[1] == "rssLs":
-                Func().rssls(sys.argv[2])
+            if sys.argv[1] == "import_qbfilter":
+                self.import_qbt_filters(sys.argv[2])
             else:
-                common.Func().print_error("bad parameters: " + sys.argv[1] + " " + sys.argv[2])
-        elif len(sys.argv) == 4:
-            if sys.argv[1] == "rssGet":
-                common.Func().getRss(sys.argv[2], sys.argv[3])
-            elif sys.argv[1] == "rssMake":
-                common.Func().makeRss(sys.argv[2], sys.argv[3])
-            else:
-                common.Func().print_error("bad parameters: " + sys.argv[1] + " " + sys.argv[2] + " " + sys.argv[3])
+                self.common.print_error("bad parameter: " + sys.argv[1])
         else:
-            common.Func().print_error("too mach parameter")
+            self.common.print_error("too mach parameter")
             
     def help(self):
-        print "bt-utils help                   - print this help"
-        print "bt-utils lsdb                   - list all cache entry - ( best use \"bt-utils lsdb | less -R\")"
-        print "bt-utils lsmod                  - list modules info"
-        print "bt-utils lscat                  - list categories info"
-        print "bt-utils rssGet CAT MODNAME     - get rss by category and engine"
-        print "bt-utils rssMake CAT MODNAME    - build rss by category and engine"
-        print "bt-utils rssLs CAT              - list last " + str(config.rssLimit) + " rss feed by category in cache"
-        print "bt-utils write-qf               - import qbittorrent filter to use with own generated rss"
-        print "bt-utils export                 - export to pretty xml format in: " + config.export_file
+        print "bt-utils help                         - print this help"
+        print "bt-utils lsmod                        - list modules info"
+        print "bt-utils lscat                        - list categories info"
+        print "bt-utils import_qbfilter              - import qbittorrent filters from config dir"
+        print "bt-utils import_qbfilter filename     - import qbittorrent filters file"
+        print "bt-utils export                       - export db to json"
         print "bt-utils stats"
-        
         print
         print "TODO"
-        print "bt-utils merdedb"
-        print "bt-utils webGet CAT MODNAME     - get last torrent on web by category and engine (if supported by module)"
-        print "bt-utils webLs  CAT SHORTNAME   - list torrent get by website by category and engine (if supported by module)"
-        print "bt-utils delitem SHORTNAME-ID   - delete specific item on database"
+        print "bt-utils delitem ID                   - delete specific item on database"
+        print "bt-utils import                       - import db from json"
 
 if __name__ == "__main__":
-    do = CLI()
+    do = Func()
+    do.cli()

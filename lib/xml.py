@@ -19,7 +19,7 @@
 
 from lxml import etree
 from datetime import datetime
-from modules import utils
+from lib import utils
 from lib import rssfilter_qbt as qbt
 import os, config, shutil, time
 

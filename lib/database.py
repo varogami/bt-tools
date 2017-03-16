@@ -157,6 +157,14 @@ class Data:
             result=cur.fetchall()
             return result
 
+    def search_by_mod(self, mod):
+        self.__con = sqlite3.connect(self.__file)
+        with self.__con:
+            cur = self.__con.cursor()
+            cur.execute('''SELECT * FROM torrent WHERE module == ?''', (mod,))
+            result=cur.fetchall()
+            return result
+
     def get_item(self, id):
         self.__con = sqlite3.connect(self.__file)
         cur = self.__con.cursor()

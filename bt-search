@@ -113,15 +113,13 @@ class Func:
         print "bt-search \"hashvalue\" hash                 - search hash value in file cache"
         print "bt-search \"id\" hashid                      - search hash value of item \"id\" in file cache"
         print
-        print "use to download search result:"
+        print "to download torrent:"
         print "bt-download ID"
         print "    example: bt-download 1234"
         print
-        print "CATEGORY LIST and SUPPORTED MODULES"
-        print "cache: " + self.__color.blu + "local search" + self.__color.base
-        self.common.lscat()
-
-        
+        print "to see list of categories:"
+        print "bt-utils lscat"
+    
         
 
 if __name__ == "__main__":

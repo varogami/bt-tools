@@ -2,7 +2,7 @@
 # -*- coding=utf-8 -*-
 
 #bt-tools - tools to interact with some bittorrent sites by commandline
-#Copyright (C) 2015 varogami <varogami@autistici.org>
+#Copyright (C) 2015-2016 varogami <varogami@altervista.org>
 
 #This program is free software: you can redistribute it and/or modify
 #it under the terms of the GNU General Public License as published by
@@ -17,41 +17,47 @@
 #You should have received a copy of the GNU General Public License
 #along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from PyQt4.QtCore import QVariant, QSettings, QString
-import config
+from PyQt4.QtCore import QVariant, QSettings, QString, QFile, QDataStream
+import json
 
 class Func:
-    def __init__(self, verbose = False):
-        #self.debug = config.debug
-        self.verbose = verbose
-        self.debug = False
+    def __init__(self, path, debug=False):
+        self.debug = debug
+        self.path = path
+        
+    def _loadRulesByExport(self, e_file):
+        qfile = QFile(e_file)
+        if qfile.open(QIODevice.ReadOnly):
+            inp = QDataStream(qfile)
+            inp.setVersion(QDataStream.Qt_4_5)
+            tmp = inp.readQVariantHash()
+            #tmp = QVariant(inp)
+            rules = self._loadRulesFromVariantHash(tmp) 
+            qfile.close()
+            #if (tmp.isEmpty())
+            #return false;
+            #qDebug("Processing was successful!");
+            return rules
+        else:
+            print "error: file " + file + "not open"
+            return None
     
-    def getFeeds( self, rules ):
-        pass
-
-    def write_rules( self ):
-        rules = self._loadRules()
+    def write_rules(self, exp_file = None):
+        if exp_file is None:
+            rules = self._loadRules()
+        else:
+            rules = self._loadRulesByExport(file)
+            
         file_list = {}
-        if self.verbose:
-            print "build filters list"
+        if self.debug:
+            print "+build qbitorrent filters list"
         for i in rules:
-            for z in i['affected_feeds']:
-                if "file://" + config.rssdir in z:
-                    filename = z.replace("file://" + config.rssdir,"").replace(".rss","")
-                    if filename in file_list.keys():
-                        rule_list = file_list[filename]
-                        rule_list.append(i['must_contain'])
-                        file_list[filename] = rule_list
-                    else:
-                        if self.verbose:
-                            print "new list: " + filename
-                        file_list[filename] = []
-        for key, list in file_list.items():
-            if self.verbose:
-                print "write file: " + config.rssdir + key + "-filters-qbt.txt"
-            rules_file = open(config.rssdir + key + "-filters-qbt.txt", "w")
-            for i in list:
-                rules_file.write(i+"\n")
+            name = i['name'].replace(" ","_")
+            filename = self.path + "/filter-qbt_"+name+".json"
+            print "+write file " + filename
+            rules_file = open(filename, "w")
+            json_data = json.dumps(i, indent=4, separators=(',', ': '))
+            rules_file.write(json_data)
             rules_file.close()
 
     def _loadRules( self ):
@@ -61,27 +67,12 @@ class Func:
 
     def _loadRulesFromVariantHash( self, qtdict ):
         all_rules = []
-        if self.debug:
-            print "load rules by qbittorrent file"
+        print "+load "+ str(len(qtdict)) +" rules by qbittorrent file"
         for title, obj in qtdict.items():
             rule = self._fromVariantHash(obj.toHash())
             if rule['enabled']:
-                if self.debug:
-                    print "#####################################################"
-                    print title
-                    print
-                    for key, value in rule.items():                
-                        if key == "affected_feeds":
-                            print key + " : "
-                            print " " + value[0]
-                            print " " + value[1]
-                            print " " + value[2]
-                        else:
-                            print key + " : " + str(value)
-                    print
                 all_rules.append(rule)
         return all_rules
-
                     
     def _fromVariantHash( self, rule_hash ):
         name = str(rule_hash[QString("name")].toString())

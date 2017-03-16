@@ -56,6 +56,56 @@ class Func:
                         print
                         ##TODO - generation local rss for site without rss
 
+    def rssls(self, cat):
+        self.data.load()
+        for i in self.data.root:
+            shortname = i.attrib['shortname'].encode('utf8')
+            name = i.attrib['name'].encode('utf8')
+            url = i.attrib['url'].encode('utf8')
+            rsslist = i.xpath("./item[@src='rss'][@type='"+cat+"']")
+            
+            print config.color_blu + "[ " + name + " ]" + config.color_base
+            print config.color_blu + shortname + " - " + url + config.color_base
+            print config.color_green + "[ items in rss: " + str(len(rsslist)) + "; showed last: " + str(config.rssLimit) + " ] " + config.color_base
+            
+            if len(rsslist) > config.rssLimit:
+                limit = config.rssLimit
+            else:
+                limit = len(rsslist)-1
+
+            count=len(rsslist)-1
+            while count >= len(rsslist)-limit:
+                z = rsslist[count]
+                count = count -1
+
+                name = z.find("./key[@name]").text.encode('utf8')
+                
+                id = z.attrib['id'].encode('utf8')
+                type = z.attrib['type'].encode('utf8')
+                
+                print config.color_magenta + id  + config.color_yellow + " [" + type + "] " + config.color_base +  name
+            print
+            
+    def getRss_old(self, cat, modname):
+        engine = self.engines[modname]
+        engine.getFeed(cat)
+        self.data.insert(engine, "rss", True, not engine.rss_light_download )
+        if config.rss_daemon_download_filtered:
+            items_to_download = self.data.filter(engine, cat, True)
+            if not items_to_download == None:
+                for item in items_to_download:
+                    if not config.filter_download_file_only:
+                        self.download(engine.shortname + "-" + item.id) #not efficent way - but less code
+                    else:
+                        file_got = engine.get_torrent_file(item, config.download_dir)
+                        self.data.add_item_to_filter_coda(item)
+                        #if not file_got: # check if downloaded torrent successful
+                        #    self.data.add_item_to_filter_coda(item)
+
+
+    def makeRss(self, cat, modname):
+        self.data.exportRssByXml(self.engines[modname], cat)
+
     def cli(self):
         if self.__conf.checkVersion():
             if len(sys.argv) == 1:
