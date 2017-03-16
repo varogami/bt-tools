@@ -214,7 +214,10 @@ class Func:
         mod_json = self.__conf.module.getModJson(i.module)
         engine = self.__conf.load_mod(i.module, mod_json)
         final_item = engine.get_detail_data(i)
-        self.__db.update_item(final_item)
+        if final_item is None:
+            self.print_error("no item data downloaded")
+        else:
+            self.__db.update_item(final_item)
         return final_item
     
     def getRss(self, cat, modname):

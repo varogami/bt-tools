@@ -1,5 +1,9 @@
 import urllib, httplib2, feedparser 
-from BeautifulSoup import BeautifulSoup
+try:
+    from BeautifulSoup import BeautifulSoup
+except Exception, e:
+    from bs4 import BeautifulSoup
+
 from datetime import datetime, date
 from lib import module
 from lib import utils
@@ -108,7 +112,10 @@ class Data(module.Data):
         return True
 
     def _get_data(self, html):
-        parsedHtml = BeautifulSoup( html, convertEntities = BeautifulSoup.HTML_ENTITIES)
+        try:
+            parsedHtml = BeautifulSoup(html,convertEntities=BeautifulSoup.HTML_ENTITIES) 
+        except:
+            parsedHtml = BeautifulSoup(html,'html.parser') #bs4
 
         dark_row_list = parsedHtml.findAll('tr',{'class':'odd'})
         light_row_list = parsedHtml.findAll('tr',{'class':'odd2'})
@@ -168,10 +175,13 @@ class Data(module.Data):
         result=httplib2.Http()
         resp,content=result.request(item.link, 'GET')
         #parsedDetails = BeautifulSoup( content.decode("utf-8") ,convertEntities = BeautifulSoup.HTML_ENTITIES )
-        parsedDetails = BeautifulSoup( content ,convertEntities = BeautifulSoup.HTML_ENTITIES )
-
+        try:
+            parsedDetails = BeautifulSoup(content,convertEntities=BeautifulSoup.HTML_ENTITIES) 
+        except:
+            parsedDetails = BeautifulSoup(content,'html.parser') #bs4
+        
         #get data
-        magnet_raw = parsedDetails.find('a',{'class':'forbtn','target':'_blank'})
+        magnet_raw = parsedDetails.find('a',{'class':'forbtn magnet'})
         if magnet_raw == None:
             magnet_raw = parsedDetails.find('a',{'class':'forbtn magnet','target':'_blank'})
         item.magnet = magnet_raw.get('href')

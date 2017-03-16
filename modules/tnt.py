@@ -1,5 +1,9 @@
 import urllib, httplib2, feedparser
-from BeautifulSoup import BeautifulSoup
+try:
+    from BeautifulSoup import BeautifulSoup
+except Exception, e:
+    from bs4 import BeautifulSoup
+
 from datetime import datetime
 from lib import module
 from lib import utils
@@ -66,21 +70,25 @@ class Item(module.Item):
         self.id_module = link.split("=")[1]
         
     def _set_date(self, date):
-        months = { "Jan":1, "Feb":2, "Mar":3, "Apr":4, "May":5, "Jun":6, "Jul":7, "Aug":8, "Sep":9, "Oct":10, "Nov":11, "Dec":12 }
-        MDY = date.split(",")[0]
-        HMM = date.split(",")[1]
-        month_w, day, year = MDY.split(' ')
-        month=months[month_w]
-        space, HM, meridiem = HMM.split(' ')
-        hour = HM.split(":")[0]
-        minutes = HM.split(":")[1]
-        if meridiem == "PM":
-            hour=int(hour)+12
-            if hour==24:
-                hour==0                   
-        newdate = datetime(int(year),int(month),int(day),int(hour),int(minutes))
-        self.date = newdate.strftime("%a, %d %b %Y %H:%M:%S CET")
-        
+        try:
+            months = { "Jan":1, "Feb":2, "Mar":3, "Apr":4, "May":5, "Jun":6, "Jul":7, "Aug":8, "Sep":9, "Oct":10, "Nov":11, "Dec":12 }
+            MDY = date.split(",")[0]
+            HMM = date.split(",")[1]
+            space, month_w, day, year = MDY.split(' ')
+            month=months[month_w]
+            space, HM, meridiem = HMM.split(' ')
+            hour = HM.split(":")[0]
+            minutes = HM.split(":")[1]
+            if meridiem == "PM":
+                hour=int(hour)+12
+                if hour==24:
+                    hour==0                   
+            newdate = datetime(int(year),int(month),int(day),int(hour),int(minutes))
+            self.date = newdate.strftime("%a, %d %b %Y %H:%M:%S CET")
+        except:
+            print "ERROR with date " + date
+            self.date = None
+            
     def get_human_size(self):
         if self.size == '0':
             return "<10 Mb"
@@ -169,7 +177,11 @@ class Data(module.Data):
 
 
     def _get_data(self, html, cat):
-        parsedHtml = BeautifulSoup(html,convertEntities=BeautifulSoup.HTML_ENTITIES)
+        try:
+            parsedHtml = BeautifulSoup(html,convertEntities=BeautifulSoup.HTML_ENTITIES) 
+        except:
+            parsedHtml = BeautifulSoup(html,'html.parser') #bs4
+
         not_registered_string = "Spiacente ma devi essere registrato per visualizzare questa pagina"
 
         if html.find(not_registered_string) > 0:
@@ -177,7 +189,7 @@ class Data(module.Data):
         
         if self.debug:
             logfile = open(self.logfile, "w")
-            logfile.write(parsedHtml.prettify())
+            logfile.write(parsedHtml.prettify().encode("UTF-8"))            
             logfile.close()
             
         list = parsedHtml.findAll('tr',{'class':'row4'})
@@ -226,11 +238,23 @@ class Data(module.Data):
 
     def get_detail_data(self, item):
         detail=httplib2.Http()
-        
+        if self.debug:
+            print "DEBUG: get detail data of - id " + str(item.id) + " - id module " + str(item.id_module) 
+            now = datetime.now().strftime("%Y%m%d_%H%M%S")
+            self.logfile = self.log_dir+"/"+self.shortname+"-detail_data-id"+str(item.id_module)+"-"+now+".html"
+
         try:
             resp,content=detail.request(item.link, 'GET')
-            parsedDetail = BeautifulSoup(content,convertEntities=BeautifulSoup.HTML_ENTITIES)
-            
+            try:
+                parsedDetail = BeautifulSoup(content,convertEntities=BeautifulSoup.HTML_ENTITIES) 
+            except:
+                parsedDetail = BeautifulSoup(content,'html.parser') #bs4
+
+            if self.debug:
+                logfile = open(self.logfile, "w")
+                logfile.write(parsedDetail.prettify().encode("UTF-8"))            
+                logfile.close()
+
             #check if link work without login
             torrent_link = parsedDetail.find('a', {'title':'Scarica allegato'})
             if torrent_link is None:
@@ -240,25 +264,53 @@ class Data(module.Data):
                         print "DEBUG: make login because link need authentication"
                 headers={'Content-type':'application/x-www-form-urlencoded','Cookie':self.cookie}
                 resp,content=detail.request( link, headers=headers )
-                parsedDetail = BeautifulSoup( content, convertEntities=BeautifulSoup.HTML_ENTITIES )
+
+                try:
+                    parsedDetail = BeautifulSoup(content,convertEntities=BeautifulSoup.HTML_ENTITIES) 
+                except:
+                    parsedDetail = BeautifulSoup(content,'html.parser') #bs4
+                    
                 torrent_link = parsedDetail.find('a', {'title':'Scarica allegato'})
 
+                if self.debug:
+                    self.logfile = self.log_dir+"/"+self.shortname+"-detail_data-id"+str(item.id_module)+"-"+now+"-with-login.html"
+                    logfile = open(self.logfile, "w")
+                    logfile.write(parsedDetail.prettify().encode("UTF-8"))            
+                    logfile.close()
 
                 
             #GET DATA
             item.torrent_link = torrent_link.get('href')
+            if self.debug:
+                print "DEBUG: torrent link:" + item.torrent_link
+                
             date = parsedDetail.find('span', {'class':'postdetails'}).getText().replace("Inviato il:","")
+            if self.debug:
+                print "DEBUG: date:" + date
+
             tmp_item = Item()
             tmp_item._set_date(date)
             item.date = tmp_item.date
-            
+            if self.debug:
+                print "DEBUG: date formatted:" + item.date
+
+                
             #Details table
             details_table_src = torrent_link.findParent().findParent().findParent()
             details_table = details_table_src.findAll('tr')
 
             item.magnet = details_table[0].findAll('a')[1].get('href')
+            if self.debug:
+                print "DEBUG: magnet:" + item.magnet
+                
+                
             size = details_table[1].getText().split(":")[1] # kb - mb - gb....
-            item.size = utils.getBytes(size)
+            fix_size = size.split(' ')[1] + " " + size.split(' ')[2]
+            if self.debug:
+                print "DEBUG: size:" + size
+                print "DEBUG: fix_size:" + fix_size
+
+            item.size = utils.getBytes(fix_size)
             item.seed = details_table[2].getText().split(":")[1]
             item.leech = details_table[3].getText().split(":")[1]
             item.compl = details_table[4].getText().split(":")[1]
@@ -275,13 +327,8 @@ class Data(module.Data):
             #file.write(myhtml.prettify())
             #file.close()
 
-            if self.debug:
-                print "DEBUG: detail data - id " + str(item.id)
-                #now = datetime.now().strftime("%Y%m%d_%H%M%S")
-                #self.logfile = self.log_dir+"/"+self.shortname+"-get_detail_data-"+str(item.id)+"-"+now+".html"
-                #logfile = open(self.logfile, "w")
-                #logfile.write(parsedDetail.prettify())
-                #logfile.close()
+            
+
             return item
         except Exception, e:
             print self.shortname + " error:  " + str(e)
@@ -296,6 +343,11 @@ class Data(module.Data):
             newitem.link = i['link']
             rssdesc = i['description'].split("Desc:")[1]
             itemsDesc = BeautifulSoup(rssdesc,convertEntities=BeautifulSoup.HTML_ENTITIES).findAll('b')
+            try:
+                itemsDesc = BeautifulSoup(rssdesc,convertEntities=BeautifulSoup.HTML_ENTITIES).findAll('b') 
+            except:
+                itemsDesc = BeautifulSoup(rssdesc,'html.parser').findAll('b') #bs4 
+
             #desc = itemsDesc[0].text
             #newitem.name = name + " " + descr            
             size = itemsDesc[3].text
