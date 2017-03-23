@@ -79,11 +79,13 @@ class Data(module.Data):
             data=urllib.pathname2url(pattern)
             uri=self.url + "/torrent-ita/" + self.cats[cat] + "/" + data + ".html"
 
-        resp,content=result.request(uri, 'GET')
-        #self._get_data(content.decode("utf-8"))
-        self._get_data(content)
-        ## TO TEST
-        return True
+        try:
+            resp,content=result.request(uri, 'GET')
+            self._get_data(content)
+            return True
+        except:
+            return False
+
 
     def _run_search_adv(self, pattern, cat):
         result=httplib2.Http()
@@ -94,22 +96,22 @@ class Data(module.Data):
         else:
              uri=self.url + "/adv/" + self.cats[cat] + "/" + data + ".html"
 
-        resp,content=result.request(uri, 'GET')
+        try:
+            resp,content=result.request(uri, 'GET')
+            parsed = self._get_data(content)
 
-        #parsed = self._get_data(content.decode("utf-8"))
-        parsed = self._get_data(content)
-
-        footer = parsed.find('p',{'align':'center'})
-        if not footer == None:
-            links = footer.findAll('a')
-            for link in links:
-                if link.getText().find('successive') > 0:
-                    uri = self.url + link.get('href')
-                    result=httplib2.Http()
-                    resp,content=result.request(uri, 'GET')
-                    #self._get_data(content.decode("utf-8"))
-                    self._get_data(content)
-        return True
+            footer = parsed.find('p',{'align':'center'})
+            if not footer == None:
+                links = footer.findAll('a')
+                for link in links:
+                    if link.getText().find('successive') > 0:
+                        uri = self.url + link.get('href')
+                        result=httplib2.Http()
+                        resp,content=result.request(uri, 'GET')
+                        self._get_data(content)
+            return True
+        except:
+            return False
 
     def _get_data(self, html):
         try:
