@@ -1,3 +1,22 @@
+#bt-tools - tools to interact with some bittorrent sites by commandline
+#Copyright (C) 2015-2017 varogami <varogami@altervista.org>
+
+#Some source code from qbittorrent script by "Diego de las Heras" <ngosang@hotmail.es>
+#https://github.com/qbittorrent/qBittorrent/wiki/Unofficial-search-plugins
+
+#This program is free software: you can redistribute it and/or modify
+#it under the terms of the GNU General Public License as published by
+#the Free Software Foundation, either version 3 of the License, or
+#(at your option) any later version.
+
+#This program is distributed in the hope that it will be useful,
+#but WITHOUT ANY WARRANTY; without even the implied warranty of
+#MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#GNU General Public License for more details.
+
+#You should have received a copy of the GNU General Public License
+#along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
 import urllib, httplib2, feedparser
 try:
     from BeautifulSoup import BeautifulSoup
@@ -134,6 +153,27 @@ class Data(module.Data):
         headers = {'Cookie':self.cookie}
         resp,content = result.request(uri, 'GET', None, headers)
 
+    def _run_search_nologin(self, pattern, cat="all"):
+        parser = self.MyHtmlParseWithBlackJack(list_searches, self.url)
+        headers = {"Content-type": "application/x-www-form-urlencoded", "X-Requested-With": "XMLHttpRequest"}
+        connection = http("www.tntvillage.scambioetico.org")
+        i = 1
+        while i < 15:
+            query = "cat=%s&page=%d&srcrel=%s" % (self.supported_categories[cat], i, what)
+            connection.request("POST", "/src/releaselist.php", query, headers)
+            response = connection.getresponse()
+            if response.status != 200:
+                return
+            html = response.read().decode('utf-8')
+            parser.feed(html)
+            if len(list_searches) < 1:
+                break
+            del list_searches[:]
+            i += 1
+
+        connection.close()
+        parser.close()
+        
     def _run_search(self,pattern,cat,stp=0,stn=20,first_page=True):
         result = httplib2.Http()
         uri = self.url + "/index.php?act=allreleases"
