@@ -31,10 +31,12 @@ class Config(module.Config):
     def __init__(self):
         self.enabled = True
         self.url = 'http://forum.tntvillage.scambioetico.org'
+        self.url_nl = 'http://www.tntvillage.scambioetico.org'
         self.name="tnt village"
         self.username = "INSERT USERNAME"
         self.password = "INSERT PASSWORD"
         self.default_cat = 'all'
+        self.search_type = 'nologin'
         self.cats = {
             "all":"0",
             "tv_misc":"1",
@@ -119,6 +121,7 @@ class Data(module.Data):
         module.Data.__init__(self,name,config,log_dir,user_agent,debug)
         self.username = config['username']
         self.password = config['password']
+        self.search_type = config['search_type']
         self.cookie = None
         self.rss_conf = config['rss']
         self.__mod_conf = config
@@ -153,26 +156,6 @@ class Data(module.Data):
         headers = {'Cookie':self.cookie}
         resp,content = result.request(uri, 'GET', None, headers)
 
-    def _run_search_nologin(self, pattern, cat="all"):
-        parser = self.MyHtmlParseWithBlackJack(list_searches, self.url)
-        headers = {"Content-type": "application/x-www-form-urlencoded", "X-Requested-With": "XMLHttpRequest"}
-        connection = http("www.tntvillage.scambioetico.org")
-        i = 1
-        while i < 15:
-            query = "cat=%s&page=%d&srcrel=%s" % (self.supported_categories[cat], i, what)
-            connection.request("POST", "/src/releaselist.php", query, headers)
-            response = connection.getresponse()
-            if response.status != 200:
-                return
-            html = response.read().decode('utf-8')
-            parser.feed(html)
-            if len(list_searches) < 1:
-                break
-            del list_searches[:]
-            i += 1
-
-        connection.close()
-        parser.close()
         
     def _run_search(self,pattern,cat,stp=0,stn=20,first_page=True):
         result = httplib2.Http()
@@ -196,21 +179,25 @@ class Data(module.Data):
                 self.logfile = self.log_dir+"/"+self.shortname+"-search-"+pattern+"-"+cat+"-"+str(stp)+"-"+str(stn)+"-"+str(first_page)+"-"+now+".html"
             
             parsed = self._get_data(content, cat)
-            have_next_page = parsed.find('input',{'name':'next'})
 
-            try: 
-                if have_next_page.get('name')=='next':
-                    stn=parsed.find('input',{'name':'stn'})
-                    stn=stn.get('value')
-                    try:
-                        stp=parsed.find('input',{'name':'stp'})
-                        stp=stp.get('value')
-                    except:
-                        stp=0
-                    self._run_search(pattern, cat, stp, stn, False)
-            except:
-                pass
-            return True
+            if parsed is not None:
+                have_next_page = parsed.find('input',{'name':'next'})
+
+                try: 
+                    if have_next_page.get('name')=='next':
+                        stn=parsed.find('input',{'name':'stn'})
+                        stn=stn.get('value')
+                        try:
+                            stp=parsed.find('input',{'name':'stp'})
+                            stp=stp.get('value')
+                        except:
+                            stp=0
+                        self._run_search(pattern, cat, stp, stn, False)
+                except:
+                    pass
+                return True
+            else:
+                return False
         except Exception, e:
             print self.shortname +" search error:  " + str(e)
             return False
@@ -223,58 +210,141 @@ class Data(module.Data):
             parsedHtml = BeautifulSoup(html,'html.parser') #bs4
 
         not_registered_string = "Spiacente ma devi essere registrato per visualizzare questa pagina"
-
+        overload_string = "Accesso ridotto allo Staff e nei gruppi di Releaser e Donatori"
+        
         if html.find(not_registered_string) > 0:
             print self.shortname +" search error:  " + not_registered_string
+        elif html.find(overload_string) > 0:
+            print self.shortname +" search error:  " + overload_string
+        else:
+            if self.debug:
+                logfile = open(self.logfile, "w")
+                logfile.write(parsedHtml.prettify().encode("UTF-8"))            
+                logfile.close()
+            
+            list = parsedHtml.findAll('tr',{'class':'row4'})
+            for i in list:
+                newitem = Item()
+            
+                a = i.find('a')
+                description = i.findAll('span',{'class':'copyright'})[1]
+                descr = description.getText()                
+                stats = i.findAll('td',{'class':'copyright'})
+                size = stats[3].getText().replace("[", "").replace("]", "")
+                name = a.getText()
+
+                newitem.name = name + " " + descr
+                newitem.link = a.get('href')
+                newitem._set_id(newitem.link)
+                newitem.leech =  stats[0].getText().replace("[", "").replace("]", "")
+                newitem.seed = stats[1].getText().replace("[", "").replace("]", "")
+                newitem.compl = stats[2].getText().replace("[", "").replace("]", "")
+                newitem._set_size(size)
+            
+                if cat == '0':
+                    img_cat = i.find('img')
+                    newitem.type = img_cat.get('src').split('/')[2].split('.')[0].replace("icon","")
+                else:
+                    newitem.type = cat
+                
+                self.list.append(newitem)
+            return parsedHtml
+        
+    def _run_search_nologin(self, pattern, cat="all"):
+        result = httplib2.Http()
+        uri = self.url + "/src/releaselist.php"
+        headers = {"Content-type": "application/x-www-form-urlencoded", "X-Requested-With": "XMLHttpRequest"}
+
+        i = 1
+        while i < 15:
+            data = {'cat':str(cat), 'page':str(i), 'srcrel':pattern}
+            data=urllib.urlencode(data)
+            success=True
+            try:
+                resp,content=result.request(uri, 'POST', data, headers, redirections=5, connection_type=None)
+                if self.debug:
+                    print "DEBUG: search nologin type - pattern \"" + pattern + "\" - cat " + cat + " - count " + str(i)
+                    now = datetime.now().strftime("%Y%m%d_%H%M%S")
+                    self.logfile = self.log_dir+"/"+self.shortname+"-search-nl-"+pattern+"-"+cat+"-"+str(i)+"-"+now+".html"
+                parsed = self._get_data_nl(content, cat)               
+                i += 1
+            except:
+                success=False
+                print self.shortname +" search error:  " + str(e)
+                break
+            if parsed is None:
+                break
+        return success
+
+
+    def _get_data_nl(self, html, cat):
+        try:
+            parsedHtml = BeautifulSoup(html,convertEntities=BeautifulSoup.HTML_ENTITIES) 
+        except:
+            parsedHtml = BeautifulSoup(html,'html.parser') #bs4
         
         if self.debug:
             logfile = open(self.logfile, "w")
             logfile.write(parsedHtml.prettify().encode("UTF-8"))            
             logfile.close()
-            
-        list = parsedHtml.findAll('tr',{'class':'row4'})
-        for i in list:
-            newitem = Item()
-            
-            a = i.find('a')
-            description = i.findAll('span',{'class':'copyright'})[1]
-            descr = description.getText()                
-            stats = i.findAll('td',{'class':'copyright'})
-            size = stats[3].getText().replace("[", "").replace("]", "")
-            name = a.getText()
 
-            newitem.name = name + " " + descr
-            newitem.link = a.get('href')
-            newitem._set_id(newitem.link)
-            newitem.leech =  stats[0].getText().replace("[", "").replace("]", "")
-            newitem.seed = stats[1].getText().replace("[", "").replace("]", "")
-            newitem.compl = stats[2].getText().replace("[", "").replace("]", "")
-            newitem._set_size(size)
-            
-            if cat == '0':
-                img_cat = i.find('img')
-                newitem.type = img_cat.get('src').split('/')[2].split('.')[0].replace("icon","")
-            else:
-                newitem.type = cat
-                
-            self.list.append(newitem)
-        return parsedHtml
+        table = parsedHtml.find('div',{'class':'showrelease_tb'})
+        list = table.findAll('tr')
 
-    def search(self, pattern, type):
-        if self.username == "INSERT USERNAME":
-            print "tnt error: username and password not configured"
-            return False
+        if len(list) < 2:
+            return None
         else:
-            if self.debug:
-                print "DEBUG: search \"" + pattern + "\" in category \"" + type + "\""
-            self._try_login()
-            if self.cookie is not None:
-                result = self._run_search(pattern,self.cats[type])
-                self._logout()
+            for i in list:
+                newitem = Item()
+
+                list_data = i.findAll('td')
+                list_link = i.findAll('a')
+
+                if list_data[0].getText() != "T":    
+                    newitem.torrent_link = list_link[0].get('href')
+                    newitem.magnet = list_link[1].get('href')
+                    newitem.link = list_link[3].get('href')
+                    newitem.name = list_data[6].getText()
+                    newitem._set_id(newitem.link)
+                    newitem.leech = list_data[3].getText()
+                    newitem.seed = list_data[4].getText()
+                    newitem.compl = list_data[5].getText()
+                    newitem.size = "0"
+                    
+                    if cat == '0':
+                        img_cat = i.find('img')
+                        newitem.type = list_link[2].get('href').split('cat=')[1]
+                    else:
+                        newitem.type = cat
+                    self.list.append(newitem)
+            return table
+    
+    def search(self, pattern, type):
+        if self.search_type == "login":
+            if self.username == "INSERT USERNAME":
+                print "tnt error: username and password not configured"
+                return False
+            else:
+                if self.debug:
+                    print "DEBUG: search \"" + pattern + "\" in category \"" + type + "\""
+                self._try_login()
+                if self.cookie is not None:
+                    result = self._run_search(pattern,self.cats[type])
+                    self._logout()
+                    return result
+                else:
+                    print self.shortname + " error:  none cookie - no login"
+                    return False
+        elif self.search_type == "nologin":
+            self.url = self.__mod_conf['url_nl']
+            result = self._run_search_nologin(pattern,self.cats[type])
+            if result is not None:
                 return result
             else:
-                print self.shortname + " error:  none cookie - no login"
                 return False
+        else:
+            print self.shortname + " error:  "+self.search_type+" is wrong type - try: login or nologin in configuration file"
+            
 
     def get_detail_data(self, item):
         detail=httplib2.Http()
