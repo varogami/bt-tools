@@ -33,7 +33,11 @@ class Func:
     def iterative_download(self, args):
         for id in args:
             if not id == args[0]:
-                self.common.download(id, args[1])
+                try:
+                    self.common.download(id, args[1])
+                except Exception, e:
+                    self.common.print_warning("problem with item: " + str(id))
+                    self.common.print_warning("error is: " + str(e))
 
     def cli(self):
         if self.__conf.checkVersion():

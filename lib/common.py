@@ -207,7 +207,9 @@ class Func:
             self.print_item_db_detail(item, mod_json)
 
     def get_item(self, id):
-        return self.build_item(self.__get_item(id))
+        item = self.__get_item(id)
+        if item is not None:
+            return self.build_item(item)
 
     def update_item(self, id):
         i = self.get_item(id)
