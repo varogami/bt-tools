@@ -4,29 +4,26 @@ Thought to low resource system and like safe database when torrent site close, (
 
 
 ## install
+Before use it needs of python beautifulsoup, urllib and feedparser modules.
 Clone the git and copy al directory on your prefer path. Then edit config.bash and config.py with your new path and config.py with your preferences.
 
 ## Search Tools
-**bt-search**    command line to search bittorrent on some site ( for now tntvillage.org, ilcorsaronero.info, btdigg.org and kickasstorrent)
+**bt-search**    command line to search bittorrent from some website
+
+**bt-download**  command line to download result of bt-search or downloaded feed
 
 ## Rss Tools
-**bt-rss-fix**            build rss usable by bittorrent client from site that not have rss or rss not work with client (for now work only with ilcorsaronero.info)
+**bt-rss**            get data of rss feed from torrent website
 
-**bt-rss-daemon**         daemon of bt-rss-fix or bt-daemon-core
-
-**bt-rss-daemon-core**    daemon for build your own rss feed by downloaded 
 
 ## Conky Tools
-**bt-conky**            generate conky code from rss downloaded with rss tools
+**bt-conky**            generate conky code of bittorrent new item from database
 
-**bt-conky-daemon**     daemon to update feed
 
 see **conky.conf** example to use it
 
 
 ## Misc Tools
-**bt-download**  command line to download result of bt-search or downloaded feed
-
 **bt-info**      show details of single torrent (get it from bt-search or downloaded feed)
 
 **bt-utils**     other utils
