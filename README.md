@@ -1,6 +1,6 @@
 # bt-tools
 tools to interact with some bittorrent sites and show result (conky, command line, ncurses and others front end in the future).
-Thought to low resource system and safe datastore when torrent site closed, (have only a one database for all).
+Thought to low resource system and safe datastore when torrent site closed (have only one database for all).
 
 
 ## install
