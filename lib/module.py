@@ -56,7 +56,10 @@ class Item(object):
         self.data[name] = descr
 
     def get_human_size(self):
-        return utils.sizeof(int(self.size))
+        if self.size == 0:
+            return "x byte"
+        else:
+            return utils.sizeof(int(self.size))
 
     def update_idate(self):
         self.idate = int(time.time())

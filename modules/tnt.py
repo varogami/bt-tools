@@ -110,11 +110,6 @@ class Item(module.Item):
             print "ERROR with date " + date
             self.date = None
             
-    def get_human_size(self):
-        if self.size == '0':
-            return "<10 Mb"
-        else:
-            return utils.sizeof(int(self.size))
     
 class Data(module.Data):
     def __init__(self, name, config, log_dir, user_agent, debug = False):
