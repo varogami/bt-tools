@@ -56,7 +56,7 @@ class Item(object):
         self.data[name] = descr
 
     def get_human_size(self):
-        if self.size == 0:
+        if self.size == "0" or self.size == 0:
             return "x byte"
         else:
             return utils.sizeof(int(self.size))
