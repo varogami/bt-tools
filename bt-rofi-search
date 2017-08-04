@@ -1,0 +1,33 @@
+#!/bin/bash 
+
+help_color="#0C73C2"
+#help_color="#5F5F5F"
+BT_SEARCH="bt-search "
+
+set_msg(){
+    MSG="<span size='small' color='$help_color'>$1</span>"
+}
+
+
+set_msg "insert words to search"
+CMD=$(echo "" | rofi -dmenu -hide-scrollbar -lines 1 -mesg "$MSG" -p "bt-search:")
+
+if [ -z "$CMD" ]
+then
+    echo nowords
+else
+    set_msg "SHIFT+RETURN to multiselect"
+    TO_DOWNLOAD=""
+    #./$BT_SEARCH "$CMD" cache | rofi -dmenu -multi-select > ~/.cache/bt-rofi
+    TXT="5408 | book Plutarco\n5409 | book Plutarco - Anziani e politica [Epub Azw3 Pdf - Ita] Saggio Etica Politica - Prog...  [l1 s5 c636] x byte"
+    echo -e $TXT | rofi -dmenu -width 80 -multi-select -mesg "$MSG" -p "bt-download:" > ~/.cache/bt-rofi
+    while read LINE
+    do
+	ITEM="$(echo "$LINE" | awk '{print $1}')"
+	TO_DOWNLOAD="$TO_DOWNLOAD $ITEM"
+    done < ~/.cache/bt-rofi
+    rm ~/.cache/bt-rofi
+
+    echo $TO_DOWNLOAD
+    echo -e "in download 1\nin download 2" | rofi -dmenu -width 80 -p "to download:"
+fi
