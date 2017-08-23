@@ -2,25 +2,27 @@
 
 help_color="#0C73C2"
 #help_color="#5F5F5F"
-BT_SEARCH="bt-search "
+BT_SEARCH="$(dirname $0)/bt-search"
+BT_DOWN="$(dirname $0)/bt-download"
 
 set_msg(){
     MSG="<span size='small' color='$help_color'>$1</span>"
 }
 
+check_bt_config(){
+    echo true
+}
 
 set_msg "insert words to search"
-CMD=$(echo "" | rofi -dmenu -hide-scrollbar -lines 1 -mesg "$MSG" -p "bt-search:")
+WORDS=$(echo "" | rofi -dmenu -hide-scrollbar -lines 1 -mesg "$MSG" -p "bt-search:")
 
-if [ -z "$CMD" ]
+if [ -z "$WORDS" ]
 then
     echo nowords
 else
     set_msg "SHIFT+RETURN to multiselect"
     TO_DOWNLOAD=""
-    #./$BT_SEARCH "$CMD" cache | rofi -dmenu -multi-select > ~/.cache/bt-rofi
-    TXT="5408 | book Plutarco\n5409 | book Plutarco - Anziani e politica [Epub Azw3 Pdf - Ita] Saggio Etica Politica - Prog...  [l1 s5 c636] x byte"
-    echo -e $TXT | rofi -dmenu -width 80 -multi-select -mesg "$MSG" -p "bt-download:" > ~/.cache/bt-rofi
+    $BT_SEARCH "$WORDS" cache | rofi -dmenu -lines 30 -multi-select -p "bt-download:" -mesg "$MSG" -font "mono 9" -width 80 -i > ~/.cache/bt-rofi
     while read LINE
     do
 	ITEM="$(echo "$LINE" | awk '{print $1}')"
@@ -28,6 +30,8 @@ else
     done < ~/.cache/bt-rofi
     rm ~/.cache/bt-rofi
 
-    echo $TO_DOWNLOAD
-    echo -e "in download 1\nin download 2" | rofi -dmenu -width 80 -p "to download:"
+    if [ ! -z $TO_DOWNLOAD ]
+    then
+	$BT_DOWN $TO_DOWNLOAD | rofi -dmenu -width 80 -p "to download:" -font "mono 9"
+    fi
 fi

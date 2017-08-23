@@ -22,11 +22,11 @@ import module
 
 class Func:
     def __init__(self, config):
-        self.color = config.getColors()
         self.__conf = config
         self.__json = config.getJson()
         self.__db = config.getDb()
         self.__debug = config.getDebug()
+        self.color = config.getColors(self.__json['colors_enabled'])
         
     def build_item(self, row):
         item = module.Item()
@@ -96,19 +96,22 @@ class Func:
     def print_footer(self, name, type, count, new):
         print self.color.blu + "end "+ name + " " + type + " - " + str(count) + new + " item " +  self.color.base
 
+            
     def __print_item(self, id_item, name, category, leech, seed, completed, size):
         limit = self.__json["output_string_limit"]
         if len(name) > limit:
             trunk_name = name[:limit] + "..."
         else:
             trunk_name = name
-        print self.color.magenta + str(id_item) + " | " + category + \
+        final_item_string = self.color.magenta + str(id_item) + " | " + category + \
             self.color.base + " " + trunk_name + \
             self.color.yellow  + "  " + "[l" + str(leech) + " s" + str(seed) + " c" + str(completed) + "] " + size + self.color.base
+        print final_item_string.encode('utf-8')
         
     def __print_item_attribute(self, name, value):
-        print self.color.yellow + name + ": " + self.color.base + str(value)
-                                           
+        final_item_attribute_string=  self.color.yellow + name + ": " + self.color.base + str(value)
+        print final_item_attribute_string.encode('utf-8')
+        
     def print_error(self, string):
         print self.color.red + string + self.color.base
                            

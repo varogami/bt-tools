@@ -25,8 +25,8 @@ from lib import common
 class Func:
     def __init__(self):
         self.__conf = config.Config()
-        self.__color = self.__conf.getColors()
         self.__json = self.__conf.getJson()
+        self.__color = self.__conf.getColors(self.__json['colors_enabled'])
         self.__db = self.__conf.getDb()
         self.__debug = self.__conf.getDebug()
         self.common = common.Func(self.__conf)
@@ -51,7 +51,8 @@ class Func:
             if self.__conf.module.loadConf(name):
                 module_config = self.__conf.module.getModJson(name)
                 #print module info
-                print self.__color.blu + name + " - " + module_config['url'] + self.__color.red
+                if self.__json['print_extra_info']: 
+                    print self.__color.blu + name + " - " + module_config['url'] + self.__color.red
                 #check if exist catalog type on module
                 if cat in module_config['cats']:
                     #load module
@@ -59,13 +60,14 @@ class Func:
                     if engine.search(pattern,cat):
                         self.__db.resetCountNew()
                         #print result count
-                        print self.__color.green + "[ result " + engine.getCount() + " item ]" + self.__color.base
+                        if self.__json['print_extra_info']: 
+                            print self.__color.green + "[ result " + engine.getCount() + " item ]" + self.__color.base
                         #insert items in db and print them 
                         for i in engine.list:
                             id = self.__db.insert(name, module_config['url'], i)
                             self.common.print_item(id, i, module_config)
-                        self.common.print_footer(name, "search", self.__db.getCountNew()," new")
-                        print
+                        if self.__json['print_extra_info']: 
+                            self.common.print_footer(name, "search", self.__db.getCountNew()," new")
                     else:
                         print self.__color.red + name + " search error: something not work" + self.__color.base 
                 else:

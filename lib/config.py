@@ -18,16 +18,26 @@ import json, os, sys, database, common
 
 
 class Color:
-    def __init__(self):
+    def __init__(self, enabled=True):
+        if enabled:
         #colors for shell
-        self.grey = '\033[90m'
-        self.red = '\033[91m'
-        self.green = '\033[92m'
-        self.yellow = '\033[93m'
-        self.blu = '\033[94m'
-        self.magenta = '\033[95m'
-        self.cyan = '\033[96m'
-        self.base = '\033[0m'
+            self.grey = '\033[90m'
+            self.red = '\033[91m'
+            self.green = '\033[92m'
+            self.yellow = '\033[93m'
+            self.blu = '\033[94m'
+            self.magenta = '\033[95m'
+            self.cyan = '\033[96m'
+            self.base = '\033[0m'
+        else:
+            self.grey = ''
+            self.red = ''
+            self.green = ''
+            self.yellow = ''
+            self.blu = ''
+            self.magenta = ''
+            self.cyan = ''
+            self.base = ''
 
             
 class Module:
@@ -134,7 +144,9 @@ class Data:
         self.browser = "w3m"
         self.output_string_limit = 80 #used by bt-download
         self.date_format = "" #TODO
-
+        self.colors_enabled = False
+        self.print_extra_info = False
+        
         self.rss = {}
         self.rss['enabled'] = False
         self.rss['dir'] =  None
@@ -157,7 +169,6 @@ class Data:
         
 class Config:
     def __init__(self):
-        self.__color = Color()
         self.__dir = os.environ['HOME'] + "/.config/bt-tools"
         self.__dir_mod =  self.__dir + "/modules"
         self.__dir_log =  self.__dir + "/log"
@@ -211,8 +222,8 @@ class Config:
         DataFile.write(data)
         DataFile.close()
                     
-    def getColors(self):
-        return self.__color
+    def getColors(self,enabled=True):
+        return Color(enabled)
 
     def getJson(self):
         return self.__json
@@ -238,7 +249,7 @@ class Config:
             module = __import__(name)
             return module.Data(name, config, self.__dir_log, self.__json['user_agent'], self.__debug)
         else:
-            print self.__color.red + "ERROR: module " + name + " not found" + self.__color.base
+            print Color().red + "ERROR: module " + name + " not found" + Color().base
             return None
 
 
