@@ -16,12 +16,6 @@ Clone the git and copy al directory on your prefer path. Then edit config.bash a
 **bt-rss**       get data of rss feed from torrent website
 
 
-## Conky Tools
-**bt-conky**     generate conky code of bittorrent new item from database
-
-see **conky.conf** example to use it
-
-
 ## Misc Tools
 **bt-info**      show details of single torrent (get it from bt-search or downloaded feed)
 
